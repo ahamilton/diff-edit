@@ -1,0 +1,27 @@
+Todo:
+- Fix coast scrolling.
+- Right align the left editor.
+- Put it on github.
+
+
+Done:
+- Try real unicode arrows instead of > <.
+- Name it.
+- Make a USAGE.
+- Syntax check the cmdline.
+- Make a setup.py.
+- Add key to toggle sub-highlights within modification highlights.
+- Fix scroll limit.
+- Add key to jump to next change. Ctrl-d
+- Optimize highlighting in Editor.
+- Let document be saved.
+- Show an indicator when the document has unsaved changes.
+- Fix spaces at end of lines not being a document change.
+- Correctly set cursor position when switching editors.
+- Correctly optimize highlight_modification.
+- Add key to cycle syntax highlighting themes (including none).
+- Make changing highlighting themes work in Editor.
+- Follow the cursor when moving off the screen to the left or right.
+
+
+Shelved:
