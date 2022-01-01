@@ -100,12 +100,10 @@ class EditorTestCase(unittest.TestCase):
     def test_backspace(self):
         self._set_editor("a\n"
                          "bcd", (2, 1))
-        self._assert_changes([(self.editor.backspace, "a\n"
-                                                      "bd", (1, 1)),
-                              (self.editor.backspace, "a\nd", (0, 1)),
-                              (self.editor.backspace, "ad", (1, 0)),
-                              (self.editor.backspace, "d", (0, 0)),
-                              (self.editor.backspace, "d", (0, 0))])
+        self._assert_changes([
+            (self.editor.backspace, "a\nbd", (1, 1)), (self.editor.backspace, "a\nd", (0, 1)),
+            (self.editor.backspace, "ad", (1, 0)), (self.editor.backspace, "d", (0, 0)),
+            (self.editor.backspace, "d", (0, 0))])
 
     def test_cursor_movement(self):
         text = ("a\n"
@@ -114,10 +112,9 @@ class EditorTestCase(unittest.TestCase):
         up, down = self.editor.cursor_up, self.editor.cursor_down
         left, right = self.editor.cursor_left, self.editor.cursor_right
         self._assert_changes([
-            (up, text, (0, 0)), (left, text, (0, 0)), (right, text, (1, 0)),
-            (right, text, (0, 1)), (left, text, (1, 0)), (down, text, (1, 1)),
-            (right, text, (2, 1)), (right, text, (2, 1)), (up, text, (1, 0)),
-            (down, text, (2, 1)),
+            (up, text, (0, 0)), (left, text, (0, 0)), (right, text, (1, 0)), (right, text, (0, 1)),
+            (left, text, (1, 0)), (down, text, (1, 1)), (right, text, (2, 1)),
+            (right, text, (2, 1)), (up, text, (1, 0)), (down, text, (2, 1)),
             (self.editor.jump_to_start_of_line, text, (0, 1)),
             (self.editor.jump_to_end_of_line, text, (2, 1))])
 
@@ -127,11 +124,9 @@ class EditorTestCase(unittest.TestCase):
         self._set_editor(text, (0, 0))
         next, previous = self.editor.next_word, self.editor.previous_word
         self._assert_changes([
-            (next, text, (2, 0)), (next, text, (6, 0)), (next, text, (3, 1)),
-            (next, text, (5, 1)), (next, text, (5, 1)),
-            (previous, text, (4, 1)), (previous, text, (1, 1)),
-            (previous, text, (4, 0)), (previous, text, (0, 0)),
-            (previous, text, (0, 0))])
+            (next, text, (2, 0)), (next, text, (6, 0)), (next, text, (3, 1)), (next, text, (5, 1)),
+            (next, text, (5, 1)), (previous, text, (4, 1)), (previous, text, (1, 1)),
+            (previous, text, (4, 0)), (previous, text, (0, 0)), (previous, text, (0, 0))])
 
     def test_jumping_blocks(self):
         text = "a\nb\n\nc\nd"
@@ -144,10 +139,9 @@ class EditorTestCase(unittest.TestCase):
     def test_page_up_and_down(self):
         text = "a\nbb\nc\nd"
         self._set_editor(text, (1, 1))
-        self._assert_changes([(self.editor.page_up, text, (0, 0)),
-                              (self.editor.page_up, text, (0, 0)),
-                              (self.editor.page_down, text, (0, 3)),
-                              (self.editor.page_down, text, (0, 3))])
+        self._assert_changes([
+            (self.editor.page_up, text, (0, 0)), (self.editor.page_up, text, (0, 0)),
+            (self.editor.page_down, text, (0, 3)), (self.editor.page_down, text, (0, 3))])
 
     def test_join_lines(self):
         text = " \nab-  \n  -cd  "
