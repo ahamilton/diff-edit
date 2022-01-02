@@ -459,7 +459,7 @@ class Editor:
 
     def follow_cursor(self):
         height = self.last_height
-        height -= 1  # header
+        height -= 2  # header + scrollbar
         width = self.last_width
         width -= 1  # scrollbar
         view_x, view_y = self.view_widget.position
