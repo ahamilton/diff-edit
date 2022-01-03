@@ -21,7 +21,7 @@ import termstr
 import diff_edit.editor as editor
 
 
-__version__ = "v2022.01.01"
+__version__ = "v2022.01.03"
 
 
 PROJECT_NAME = "diff-edit"
