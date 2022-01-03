@@ -458,6 +458,13 @@ class Editor:
         self.text_widget.theme = theme
         self.text_widget.syntax_highlight_all()
 
+    def quit(self):
+        fill3.SHUTDOWN_EVENT.set()
+
+    def ctrl_c(self):
+        if self.previous_term_code == terminal.CTRL_X:
+            self.quit()
+
     def get_text(self):
         return self.text_widget.get_text()
 
@@ -555,7 +562,8 @@ class Editor:
         terminal.ALT_CARROT: join_lines, terminal.ALT_h: highlight_block,
         terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_highlighted,
-        terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix}
+        terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
+        terminal.CTRL_C: ctrl_c}
 
 
 def main():
