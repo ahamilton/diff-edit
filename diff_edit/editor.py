@@ -261,15 +261,18 @@ class Editor:
         self.cursor_x, self.cursor_y = 0, 0
         self.original_text = self.text_widget.actual_text.copy()
 
+    def prefix(self):
+        pass
+
     def load(self, path):
         self.set_text(open(path).read())
         self.path = path
 
     def save(self):
-        pass
-        # with open(self.path, "w") as f:
-        #     f.write(self.text_widget.get_text())
-        # self.original_text = self.text_widget.actual_text.copy()
+        if self.previous_term_code == terminal.CTRL_X:
+            with open(self.path, "w") as f:
+                f.write(self.text_widget.get_text())
+            self.original_text = self.text_widget.actual_text.copy()
 
     def backspace(self):
         if self.cursor_x == 0:
@@ -483,6 +486,7 @@ class Editor:
             self.insert_text(term_code)
         else:
             self.insert_text(repr(term_code))
+        self.previous_term_code = term_code
         self.follow_cursor()
         fill3.APPEARANCE_CHANGED_EVENT.set()
 
@@ -533,7 +537,7 @@ class Editor:
         return result
 
     KEY_MAP = {
-        terminal.ALT_s: save, terminal.BACKSPACE: backspace, terminal.LEFT: cursor_left,
+        terminal.CTRL_S: save, terminal.BACKSPACE: backspace, terminal.LEFT: cursor_left,
         terminal.CTRL_B: cursor_left, terminal.RIGHT: cursor_right, terminal.CTRL_F: cursor_right,
         terminal.UP: cursor_up, terminal.CTRL_P: cursor_up, terminal.DOWN: cursor_down,
         terminal.CTRL_N: cursor_down, terminal.CTRL_A: jump_to_start_of_line,
@@ -550,7 +554,7 @@ class Editor:
         terminal.ALT_CARROT: join_lines, terminal.ALT_h: highlight_block,
         terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_highlighted,
-        terminal.ALT_c: cycle_syntax_highlighting}
+        terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix}
 
 
 def main():
