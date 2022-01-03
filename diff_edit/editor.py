@@ -265,13 +265,14 @@ class Editor:
         pass
 
     def load(self, path):
-        self.set_text(open(path).read())
+        with open(path) as file_:
+            self.set_text(file_.read())
         self.path = path
 
     def save(self):
         if self.previous_term_code == terminal.CTRL_X:
-            with open(self.path, "w") as f:
-                f.write(self.text_widget.get_text())
+            with open(self.path, "w") as file_:
+                file_.write(self.text_widget.get_text())
             self.original_text = self.text_widget.actual_text.copy()
 
     def backspace(self):
