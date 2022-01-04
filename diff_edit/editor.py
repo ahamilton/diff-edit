@@ -200,6 +200,7 @@ class Editor:
         self.last_height = 40
         self.is_editing = True
         self.theme_index = 0
+        self.previous_term_code = None
 
     @property
     def cursor_x(self):
