@@ -1,7 +1,5 @@
 Todo:
-- Fix coast scrolling.
 - Right align the left editor.
-- Put it on github.
 
 
 Done:
@@ -22,6 +20,8 @@ Done:
 - Add key to cycle syntax highlighting themes (including none).
 - Make changing highlighting themes work in Editor.
 - Follow the cursor when moving off the screen to the left or right.
+- Fix coast scrolling.
+- Put it on github.
 
 
 Shelved:
