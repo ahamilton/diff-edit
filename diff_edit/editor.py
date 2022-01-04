@@ -531,7 +531,7 @@ class Editor:
     @functools.lru_cache(maxsize=100)
     def get_header(self, path, width, cursor_x, cursor_y, is_changed):
         change_marker = "*" if is_changed else ""
-        cursor_position = "Line %s Column %s" % (cursor_y + 1, cursor_x + 1)
+        cursor_position = f"Line {cursor_y+1} Column {cursor_x+1:<3}"
         path_part = (path + change_marker).ljust(width - len(cursor_position) - 2)
         return (termstr.TermStr(" " + path_part, self._HEADER_STYLE).bold() +
                 termstr.TermStr(cursor_position + " ", self._HEADER_STYLE))
