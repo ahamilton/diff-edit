@@ -1,6 +1,6 @@
 # Diff-edit
 
-Out of order, do not use.
+:warning: Out of order, do not use.
 
 ## Summary
 
