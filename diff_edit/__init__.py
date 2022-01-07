@@ -245,9 +245,11 @@ class DiffEditor:
                 self.right_editor.on_mouse_drag(x - right_x - 1, y)
 
     def update_diff(self):
-        self.diff = difflib.SequenceMatcher(
-            a=self.left_editor.text_widget,
-            b=self.right_editor.text_widget).get_opcodes()
+        self.diff = difflib.SequenceMatcher(a=self.left_editor.text_widget,
+                                            b=self.right_editor.text_widget).get_opcodes()
+
+    def toggle_highlights(self):
+        self.show_sub_highlights = not self.show_sub_highlights
 
     def jump_to_next_diff(self):
         y = self.editors[0].cursor_y
@@ -284,16 +286,8 @@ class DiffEditor:
             editor_.cycle_syntax_highlighting()
 
     def on_keyboard_input(self, term_code):
-        if term_code == terminal.ALT_o:
-            self.switch_editor()
-        elif term_code == terminal.ALT_h:
-            self.show_sub_highlights = not self.show_sub_highlights
-        elif term_code == terminal.ALT_DOWN:
-            self.jump_to_next_diff()
-        elif term_code == terminal.ALT_UP:
-            self.jump_to_previous_diff()
-        elif term_code == terminal.ALT_c:
-            self.cycle_syntax_highlighting()
+        if term_code in self.KEY_MAP:
+            self.KEY_MAP[term_code](self)
         else:
             self.editors[0].on_keyboard_input(term_code)
             self.diff = None
@@ -353,6 +347,10 @@ class DiffEditor:
         inactive_appearance[0] = highlight_str(inactive_appearance[0], termstr.Color.black, 0.5)
         return fill3.join_horizontal(
             [left_appearance] + self.divider_appearance(height) + [right_appearance])
+
+    KEY_MAP = {terminal.ALT_o: switch_editor, terminal.ALT_h: toggle_highlights,
+               terminal.ALT_DOWN: jump_to_next_diff, terminal.ALT_UP: jump_to_previous_diff,
+               terminal.ALT_c: cycle_syntax_highlighting}
 
 
 def check_arguments():
