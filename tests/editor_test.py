@@ -150,6 +150,17 @@ class EditorTestCase(unittest.TestCase):
                               (self.editor.join_lines, "ab- -cd  ", (0, 0)),
                               (self.editor.join_lines, "ab- -cd  ", (0, 0))])
 
+    def test_delete_line(self):
+        text = "a  \ndef"
+        self._set_editor(text, (1, 0))
+        self._assert_changes([(self.editor.delete_line, "adef", (1, 0)),
+                              (self.editor.delete_line, "a", (1, 0))])
+        text = "\nabc"
+        self._set_editor(text, (0, 0))
+        self._assert_changes([(self.editor.delete_line, "abc", (0, 0)),
+                              (self.editor.delete_line, "", (0, 0)),
+                              (self.editor.delete_line, "", (0, 0))])
+
 
 if __name__ == "__main__":
     unittest.main()

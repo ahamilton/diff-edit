@@ -425,6 +425,14 @@ class Editor:
             self.previous_word()
         self.delete_selection()
 
+    def delete_line(self):
+        empty_selection = self.text_widget[self.cursor_y][self.cursor_x:].strip() == ""
+        self.set_mark()
+        self.jump_to_end_of_line()
+        self.delete_selection()
+        if empty_selection:
+            self.delete_character()
+
     def join_lines(self):
         if self.cursor_y == 0:
             self.jump_to_start_of_line()
@@ -564,7 +572,7 @@ class Editor:
         terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_highlighted,
         terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
-        terminal.CTRL_C: ctrl_c}
+        terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line}
 
 
 def main():
