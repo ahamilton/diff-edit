@@ -228,24 +228,20 @@ class Editor:
     @scroll_position.setter
     def scroll_position(self, position):
         x, y = position
-        # text_width = self.text_widget.max_line_length
-        # if x < 0:
-        #     new_x = 0
-        # elif x > text_width - self.last_width + 2:
-        #     new_x = max(text_width - self.last_width + 2, 0)
-        # else:
-        #     new_x = x
-        # if y < 0:
-        #     new_y = 0
-        # elif y > len(self.text_widget) - self.last_height + 2:
-        #     new_y = max(len(self.text_widget) - self.last_height + 2, 0)
-        # else:
-        #     new_y = y
-        new_x, new_y = max(x, 0), y
+        text_width = self.text_widget.max_line_length
+        if x < 0:
+            new_x = 0
+        elif x > text_width - self.last_width + 2:
+            new_x = max(text_width - self.last_width + 2, 0)
+        else:
+            new_x = x
+        if y < 0:
+            new_y = 0
+        elif y > len(self.text_widget) - self.last_height + 2:
+            new_y = max(len(self.text_widget) - self.last_height + 2, 0)
+        else:
+            new_y = y
         self.view_widget.position = new_x, new_y
-        view_x, view_y = self.view_widget.position
-        new_cursor_y = self.cursor_y + y - view_y
-        self.cursor_y = max(0, min(new_cursor_y, len(self.text_widget) - 1))
 
     def get_selection_interval(self):
         mark_x, mark_y = self.mark
