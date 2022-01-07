@@ -27,11 +27,7 @@ def highlight_str(line, bg_color, transparency=0.6):
 
 
 PYTHON_LEXER = pygments.lexers.get_lexer_by_name("python")
-# NATIVE_STYLE = pygments.styles.get_style_by_name("monokai")
-# NATIVE_STYLE = pygments.styles.get_style_by_name("native")
 NATIVE_STYLE = pygments.styles.get_style_by_name("paraiso-dark")
-# NATIVE_STYLE = pygments.styles.get_style_by_name("fruity")
-# NATIVE_STYLE = pygments.styles.get_style_by_name("solarizedlight")
 
 
 def _syntax_highlight(text, lexer, style):

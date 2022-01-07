@@ -133,7 +133,6 @@ class DiffEditor:
         self.left_editor.view_widget.is_scrollbar_right = False
         self.right_editor = editor.Editor()
         self.right_editor.load(right_path)
-        # self.unify_duplicate_lines()
         self.show_sub_highlights = True
         self.diff = None
 
@@ -174,16 +173,6 @@ class DiffEditor:
         self.right_view = self.right_editor.view_widget
         self.right_editor.is_editing = False
         self.editors = [self.left_editor, self.right_editor]
-
-    # def unify_duplicate_lines(self):
-    #     lines = {line: line for line in self.left_editor.text_widget}
-    #     lines.update({line: line for line in self.right_editor.text_widget})
-    #     for editor_ in [self.left_editor, self.right_editor]:
-    #         for index, line in enumerate(editor.text_widget):
-    #             try:
-    #                 editor_.text_widget[index] = lines[line]
-    #             except KeyError:
-    #                 pass
 
     def _equivalent_line(self, y):
         for opcode, left_start, left_end, right_start, right_end in self.diff:
@@ -254,12 +243,6 @@ class DiffEditor:
                 self.left_editor.on_mouse_drag(x, y)
             elif x > right_x:
                 self.right_editor.on_mouse_drag(x - right_x - 1, y)
-        else:  # mouse release
-            pass
-            # if x < left_x:
-            #     self.left_editor.on_mouse_release(x, y)
-            # elif x > right_x:
-            #     self.right_editor.on_mouse_release(x - right_x - 1, y)
 
     def update_diff(self):
         self.diff = difflib.SequenceMatcher(
