@@ -11,7 +11,7 @@ Edit two files side by side, showing differences.
 Install diff-edit directly using pip:
 
     pip install --upgrade pip  # A recent version of pip is needed.
-    pip install git+https://github.com/ahamilton/diff-edit@v2022.01.03
+    pip install git+https://github.com/ahamilton/diff-edit
 
 Or install from source:
 
