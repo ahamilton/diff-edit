@@ -425,6 +425,22 @@ class Editor:
         if empty_selection:
             self.delete_character()
 
+    def tab_align(self):
+        if self.cursor_y == 0:
+            return
+        self.jump_to_start_of_line()
+        self.cursor_up()
+        while self._current_character() == " ":
+            self.cursor_right()
+        indent = self.cursor_x
+        self.cursor_down()
+        self.jump_to_start_of_line()
+        self.set_mark()
+        while self._current_character() == " ":
+            self.cursor_right()
+        self.delete_selection()
+        self.insert_text(" " * indent)
+
     def join_lines(self):
         if self.cursor_y == 0:
             self.jump_to_start_of_line()
@@ -564,7 +580,7 @@ class Editor:
         terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_highlighted,
         terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
-        terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line}
+        terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align}
 
 
 def main():

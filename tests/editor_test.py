@@ -144,22 +144,26 @@ class EditorTestCase(unittest.TestCase):
             (self.editor.page_down, text, (0, 3)), (self.editor.page_down, text, (0, 3))])
 
     def test_join_lines(self):
-        text = " \nab-  \n  -cd  "
-        self._set_editor(text, (4, 2))
+        self._set_editor(" \nab-  \n  -cd  ", (4, 2))
         self._assert_changes([(self.editor.join_lines, " \nab- -cd  ", (3, 1)),
                               (self.editor.join_lines, "ab- -cd  ", (0, 0)),
                               (self.editor.join_lines, "ab- -cd  ", (0, 0))])
 
     def test_delete_line(self):
-        text = "a  \ndef"
-        self._set_editor(text, (1, 0))
+        self._set_editor("a  \ndef", (1, 0))
         self._assert_changes([(self.editor.delete_line, "adef", (1, 0)),
                               (self.editor.delete_line, "a", (1, 0))])
-        text = "\nabc"
-        self._set_editor(text, (0, 0))
+        self._set_editor("\nabc", (0, 0))
         self._assert_changes([(self.editor.delete_line, "abc", (0, 0)),
                               (self.editor.delete_line, "", (0, 0)),
                               (self.editor.delete_line, "", (0, 0))])
+
+    def test_tab_align(self):
+        text = " a\n  b"
+        self._set_editor(text, (0, 0))
+        self._assert_changes([(self.editor.tab_align, text, (0, 0)),
+                              (self.editor.cursor_down, text, (0, 1)),
+                              (self.editor.tab_align, " a\n b", (1, 1))])
 
 
 if __name__ == "__main__":
