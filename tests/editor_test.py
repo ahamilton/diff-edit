@@ -165,6 +165,27 @@ class EditorTestCase(unittest.TestCase):
                               (self.editor.cursor_down, text, (0, 1)),
                               (self.editor.tab_align, " a\n b", (1, 1))])
 
+    def test_comment_lines(self):
+        self._set_editor("", (0, 0))
+        self._assert_changes([(self.editor.comment_lines, "# ", (2, 0))])
+        self._set_editor("a", (0, 0))
+        self._assert_changes([(self.editor.comment_lines, "a  # ", (5, 0))])
+        self.editor.jump_to_start_of_line()
+        self._assert_changes([(self.editor.comment_lines, "a  # ", (4, 0))])
+        text = "  a\n\n b\n"
+        self._set_editor(text, (0, 0))
+        self.editor.set_mark()
+        self.editor.cursor_down()
+        self.editor.cursor_down()
+        self.editor.cursor_down()
+        self._assert_changes([(self.editor.comment_lines, " #  a\n\n # b\n", (0, 3))])
+        self.assertEqual(self.editor.mark, None)
+        self.editor.set_mark()
+        self.editor.cursor_up()
+        self.editor.cursor_up()
+        self.editor.cursor_up()
+        self._assert_changes([(self.editor.comment_lines, text, (0, 0))])
+
 
 if __name__ == "__main__":
     unittest.main()

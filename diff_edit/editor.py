@@ -15,7 +15,7 @@ import pygments.lexers
 import pygments.styles
 import termstr
 
-
+   
 @functools.lru_cache(maxsize=100)
 def highlight_str(line, bg_color, transparency=0.6):
     def blend_style(style):
@@ -425,14 +425,19 @@ class Editor:
         if empty_selection:
             self.delete_character()
 
-    def tab_align(self):
+    def _indent_level(self):
         if self.cursor_y == 0:
-            return
+            return 0
         self.jump_to_start_of_line()
         self.cursor_up()
         while self._current_character() == " ":
             self.cursor_right()
-        indent = self.cursor_x
+        return self.cursor_x
+
+    def tab_align(self):
+        if self.cursor_y == 0:
+            return
+        indent = self._indent_level()
         self.cursor_down()
         self.jump_to_start_of_line()
         self.set_mark()
@@ -440,6 +445,42 @@ class Editor:
             self.cursor_right()
         self.delete_selection()
         self.insert_text(" " * indent)
+
+    def _line_indent(self, y):
+        line = self.text_widget[y]
+        for index, char in enumerate(line):
+            if char != " ":
+                return index
+        return 0
+
+    def comment_lines(self):
+        if self.mark is None:
+            if self.text_widget[self.cursor_y].strip() == "":
+                self.text_widget[self.cursor_y] = "# "
+                self.cursor_x = 2
+            else:
+                try:
+                    index = self.text_widget[self.cursor_y].index("#")
+                    self.cursor_x = index + 1
+                except ValueError:
+                    self.jump_to_end_of_line()
+                    self.insert_text("  # ")
+        else:
+            (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
+            min_indent = min(self._line_indent(y) for y in range(start_y, end_y)
+                             if self.text_widget[y].strip() != "")
+            if all(self.text_widget[y][min_indent:min_indent+2] == "# " or self.text_widget[y].strip() == ""
+                   for y in range(start_y, end_y)):
+                for y in range(start_y, end_y):
+                    line = self.text_widget[y]
+                    if line.strip() != "":
+                        self.text_widget[y] = line[:min_indent] + line[min_indent + 2:]
+            else:
+                for y in range(start_y, end_y):
+                    line = self.text_widget[y]
+                    if line.strip() != "":
+                        self.text_widget[y] = line[:min_indent] + "# " + line[min_indent:]
+            self.mark = None
 
     def join_lines(self):
         if self.cursor_y == 0:
@@ -463,9 +504,6 @@ class Editor:
         view_x, view_y = self.view_widget.position
         new_y = max(0, self.cursor_y - self.last_height // 2)
         self.view_widget.position = view_x, new_y
-
-    def comment_highlighted(self):
-        pass
 
     def cycle_syntax_highlighting(self):
         self.theme_index += 1
@@ -578,7 +616,7 @@ class Editor:
         terminal.ALT_LEFT: previous_word, terminal.ALT_BACKSPACE: delete_backward,
         terminal.ALT_CARROT: join_lines, terminal.ALT_h: highlight_block,
         terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
-        terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_highlighted,
+        terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
         terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align}
 
