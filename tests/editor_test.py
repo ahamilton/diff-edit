@@ -65,8 +65,7 @@ class EditorTestCase(unittest.TestCase):
         self.editor.cursor_x, self.editor.cursor_y = cursor_position
 
     def _assert_changes(self, changes):
-        for index, change in enumerate(changes):
-            # with self.subTest(index=index, change=change):
+        for change in changes:
             method, expected_text, expected_cursor_position = change
             with contextlib.suppress(IndexError):
                 method()
