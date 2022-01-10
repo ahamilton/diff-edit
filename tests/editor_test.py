@@ -66,11 +66,11 @@ class EditorTestCase(unittest.TestCase):
 
     def _assert_changes(self, changes):
         for index, change in enumerate(changes):
-            with self.subTest(index=index, change=change):
-                method, expected_text, expected_cursor_position = change
-                with contextlib.suppress(IndexError):
-                    method()
-                self._assert_editor(expected_text, expected_cursor_position)
+            # with self.subTest(index=index, change=change):
+            method, expected_text, expected_cursor_position = change
+            with contextlib.suppress(IndexError):
+                method()
+            self._assert_editor(expected_text, expected_cursor_position)
 
     def test_empty_editor(self):
         self._assert_editor("", (0, 0))
@@ -166,12 +166,16 @@ class EditorTestCase(unittest.TestCase):
                               (self.editor.tab_align, " a\n b", (1, 1))])
 
     def test_comment_lines(self):
+        # from scratch
         self._set_editor("", (0, 0))
         self._assert_changes([(self.editor.comment_lines, "# ", (2, 0))])
+        # No selection
         self._set_editor("a", (0, 0))
         self._assert_changes([(self.editor.comment_lines, "a  # ", (5, 0))])
+        # Comment when comment exists
         self.editor.jump_to_start_of_line()
         self._assert_changes([(self.editor.comment_lines, "a  # ", (4, 0))])
+        # Selection containing blank lines
         text = "  a\n\n b\n"
         self._set_editor(text, (0, 0))
         self.editor.set_mark()
@@ -180,11 +184,28 @@ class EditorTestCase(unittest.TestCase):
         self.editor.cursor_down()
         self._assert_changes([(self.editor.comment_lines, " #  a\n\n # b\n", (0, 3))])
         self.assertEqual(self.editor.mark, None)
+        # Undo comments in selection
         self.editor.set_mark()
         self.editor.cursor_up()
         self.editor.cursor_up()
         self.editor.cursor_up()
         self._assert_changes([(self.editor.comment_lines, text, (0, 0))])
+        # Selection on one line, in middle
+        self._set_editor("abc", (1, 0))
+        self.editor.set_mark()
+        self.editor.cursor_right()
+        self._assert_changes([(self.editor.comment_lines, "a# b\nc", (4, 0))])
+        # Selection on one line, on right
+        self._set_editor("ab", (1, 0))
+        self.editor.set_mark()
+        self.editor.cursor_right()
+        self._assert_changes([(self.editor.comment_lines, "a# b", (4, 0))])
+        # Multi-line selection, starting middle, ending middle. Trailing unselected line
+        self._set_editor("abc\ndef\nghi\njkl", (2, 0))
+        self.editor.set_mark()
+        self.editor.cursor_down()
+        self.editor.cursor_down()
+        self._assert_changes([(self.editor.comment_lines, "ab# c\n# def\n# gh\ni\njkl", (4, 2))])
 
 
 if __name__ == "__main__":

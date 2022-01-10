@@ -462,24 +462,40 @@ class Editor:
                 try:
                     index = self.text_widget[self.cursor_y].index("#")
                     self.cursor_x = index + 1
-                except ValueError:
+                except ValueError:  # '#' not in line
                     self.jump_to_end_of_line()
                     self.insert_text("  # ")
         else:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
-            min_indent = min(self._line_indent(y) for y in range(start_y, end_y)
-                             if self.text_widget[y].strip() != "")
-            if all(self.text_widget[y][min_indent:min_indent+2] == "# " or self.text_widget[y].strip() == ""
-                   for y in range(start_y, end_y)):
-                for y in range(start_y, end_y):
-                    line = self.text_widget[y]
-                    if line.strip() != "":
-                        self.text_widget[y] = line[:min_indent] + line[min_indent + 2:]
+            if end_x != 0 and not self.cursor_x == len(self.text_widget[end_y]):
+                self.enter()
+                self.cursor_left()
+            if start_x != 0:
+                new_line = (self.text_widget[start_y][:start_x] + "# " +
+                            self.text_widget[start_y][start_x:])
+                self.text_widget[start_y] = new_line
+                self.cursor_x = len(new_line)
+                start_y += 1
+            if end_x != 0:
+                end_y += 1
+            mid_lines = range(start_y, end_y)
+            try:
+                min_indent = min(self._line_indent(y) for y in mid_lines
+                                 if self.text_widget[y].strip() != "")
+            except ValueError:
+                pass
             else:
-                for y in range(start_y, end_y):
-                    line = self.text_widget[y]
-                    if line.strip() != "":
-                        self.text_widget[y] = line[:min_indent] + "# " + line[min_indent:]
+                if all(self.text_widget[y][min_indent:min_indent+2] == "# "
+                       or self.text_widget[y].strip() == "" for y in mid_lines):
+                    for y in mid_lines:
+                        line = self.text_widget[y]
+                        if line.strip() != "":
+                            self.text_widget[y] = line[:min_indent] + line[min_indent + 2:]
+                else:
+                    for y in mid_lines:
+                        line = self.text_widget[y]
+                        if line.strip() != "":
+                            self.text_widget[y] = line[:min_indent] + "# " + line[min_indent:]
             self.mark = None
 
     def join_lines(self):
