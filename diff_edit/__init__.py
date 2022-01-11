@@ -27,7 +27,7 @@ __version__ = "v2022.01.03"
 PROJECT_NAME = "diff-edit"
 USAGE = f"""
 Usage:
-  {PROJECT_NAME} <file-a> <file-b>
+  {PROJECT_NAME} <file-a> [<file-b>]
   {PROJECT_NAME} -h | --help
   {PROJECT_NAME} --version
 
@@ -359,7 +359,7 @@ def check_arguments():
         print(__version__)
         sys.exit(0)
     for path in [arguments["<file-a>"], arguments["<file-b>"]]:
-        if not os.path.isfile(path):
+        if path is not None and not os.path.isfile(path):
             print("File does not exist:", path)
             sys.exit(1)
     return arguments["<file-a>"], arguments["<file-b>"]
@@ -367,8 +367,12 @@ def check_arguments():
 
 def main():
     path_a, path_b = check_arguments()
-    editor = DiffEditor(path_a, path_b)
-    asyncio.run(fill3.tui(PROJECT_NAME, editor))
+    if path_b is None:
+        editor_ = editor.Editor(path_a)
+        editor_.load(path_a)
+    else:
+        editor_ = DiffEditor(path_a, path_b)
+    asyncio.run(fill3.tui(PROJECT_NAME, editor_))
 
 
 if __name__ == "__main__":
