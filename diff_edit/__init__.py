@@ -35,13 +35,13 @@ Example:
   # {PROJECT_NAME} project.py.bak project.py
 
 Keys:
-  Ctrl-x, Ctrl-s         Save file.
-  Alt-o                  Switch focus between editors. (toggle)
-  Alt-up                 Move to previous difference.
-  Alt-down               Move to next difference.
-  Alt-c                  Change syntax highlighting theme. (cycle)
-  Alt-h                  Hide sub-highlighting of modifications. (toggle)
-  Esc or Ctrl-x, Ctrl-c  Quit.
+  (Ctrl-x, Ctrl-s)         Save file.
+  Alt-o                    Switch focus between editors. (toggle)
+  Alt-up                   Move to previous difference.
+  Alt-down                 Move to next difference.
+  Alt-c                    Change syntax highlighting theme. (cycle)
+  Alt-h                    Hide sub-highlighting of modifications. (toggle)
+  Esc or (Ctrl-x, Ctrl-c)  Quit.
 """
 
 
