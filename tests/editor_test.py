@@ -64,12 +64,10 @@ class EditorTestCase(unittest.TestCase):
         self.editor.set_text(text)
         self.editor.cursor_x, self.editor.cursor_y = cursor_position
 
-    def _assert_changes(self, changes):
-        for change in changes:
-            method, expected_text, expected_cursor_position = change
-            with contextlib.suppress(IndexError):
-                method()
-            self._assert_editor(expected_text, expected_cursor_position)
+    def _assert_change(self, method, expected_text, expected_cursor_position):
+        with contextlib.suppress(IndexError):
+            method()
+        self._assert_editor(expected_text, expected_cursor_position)
 
     def test_empty_editor(self):
         self._assert_editor("", (0, 0))
@@ -91,18 +89,19 @@ class EditorTestCase(unittest.TestCase):
 
     def test_delete_character(self):
         self._set_editor("ab\nc", (1, 0))
-        self._assert_changes([(self.editor.delete_character, "a\nc", (1, 0)),
-                              (self.editor.delete_character, "ac", (1, 0)),
-                              (self.editor.delete_character, "a", (1, 0)),
-                              (self.editor.delete_character, "a", (1, 0))])
+        self._assert_change(self.editor.delete_character, "a\nc", (1, 0))
+        self._assert_change(self.editor.delete_character, "ac", (1, 0))
+        self._assert_change(self.editor.delete_character, "a", (1, 0))
+        self._assert_change(self.editor.delete_character, "a", (1, 0))
 
     def test_backspace(self):
         self._set_editor("a\n"
                          "bcd", (2, 1))
-        self._assert_changes([
-            (self.editor.backspace, "a\nbd", (1, 1)), (self.editor.backspace, "a\nd", (0, 1)),
-            (self.editor.backspace, "ad", (1, 0)), (self.editor.backspace, "d", (0, 0)),
-            (self.editor.backspace, "d", (0, 0))])
+        self._assert_change(self.editor.backspace, "a\nbd", (1, 1))
+        self._assert_change(self.editor.backspace, "a\nd", (0, 1))
+        self._assert_change(self.editor.backspace, "ad", (1, 0))
+        self._assert_change(self.editor.backspace, "d", (0, 0))
+        self._assert_change(self.editor.backspace, "d", (0, 0))
 
     def test_cursor_movement(self):
         text = ("a\n"
@@ -110,70 +109,83 @@ class EditorTestCase(unittest.TestCase):
         self._set_editor(text, (0, 0))
         up, down = self.editor.cursor_up, self.editor.cursor_down
         left, right = self.editor.cursor_left, self.editor.cursor_right
-        self._assert_changes([
-            (up, text, (0, 0)), (left, text, (0, 0)), (right, text, (1, 0)), (right, text, (0, 1)),
-            (left, text, (1, 0)), (down, text, (1, 1)), (right, text, (2, 1)),
-            (right, text, (2, 1)), (up, text, (1, 0)), (down, text, (2, 1)),
-            (self.editor.jump_to_start_of_line, text, (0, 1)),
-            (self.editor.jump_to_end_of_line, text, (2, 1))])
+        self._assert_change(up, text, (0, 0))
+        self._assert_change(left, text, (0, 0))
+        self._assert_change(right, text, (1, 0))
+        self._assert_change(right, text, (0, 1))
+        self._assert_change(left, text, (1, 0))
+        self._assert_change(down, text, (1, 1))
+        self._assert_change(right, text, (2, 1))
+        self._assert_change(right, text, (2, 1))
+        self._assert_change(up, text, (1, 0))
+        self._assert_change(down, text, (2, 1))
+        self._assert_change(self.editor.jump_to_start_of_line, text, (0, 1))
+        self._assert_change(self.editor.jump_to_end_of_line, text, (2, 1))
 
     def test_jumping_words(self):
         text = ("ab .dj\n"
                 " bc*d")
         self._set_editor(text, (0, 0))
         next, previous = self.editor.next_word, self.editor.previous_word
-        self._assert_changes([
-            (next, text, (2, 0)), (next, text, (6, 0)), (next, text, (3, 1)), (next, text, (5, 1)),
-            (next, text, (5, 1)), (previous, text, (4, 1)), (previous, text, (1, 1)),
-            (previous, text, (4, 0)), (previous, text, (0, 0)), (previous, text, (0, 0))])
+        self._assert_change(next, text, (2, 0))
+        self._assert_change(next, text, (6, 0))
+        self._assert_change(next, text, (3, 1))
+        self._assert_change(next, text, (5, 1))
+        self._assert_change(next, text, (5, 1))
+        self._assert_change(previous, text, (4, 1))
+        self._assert_change(previous, text, (1, 1))
+        self._assert_change(previous, text, (4, 0))
+        self._assert_change(previous, text, (0, 0))
+        self._assert_change(previous, text, (0, 0))
 
     def test_jumping_blocks(self):
         text = "a\nb\n\nc\nd"
         self._set_editor(text, (0, 0))
-        self._assert_changes([(self.editor.jump_to_block_start, text, (0, 0)),
-                              (self.editor.jump_to_block_end, text, (0, 2)),
-                              (self.editor.jump_to_block_end, text, (0, 4)),
-                              (self.editor.jump_to_block_end, text, (0, 4))])
+        self._assert_change(self.editor.jump_to_block_start, text, (0, 0))
+        self._assert_change(self.editor.jump_to_block_end, text, (0, 2))
+        self._assert_change(self.editor.jump_to_block_end, text, (0, 4))
+        self._assert_change(self.editor.jump_to_block_end, text, (0, 4))
 
     def test_page_up_and_down(self):
         text = "a\nbb\nc\nd"
         self._set_editor(text, (1, 1))
-        self._assert_changes([
-            (self.editor.page_up, text, (0, 0)), (self.editor.page_up, text, (0, 0)),
-            (self.editor.page_down, text, (0, 3)), (self.editor.page_down, text, (0, 3))])
+        self._assert_change(self.editor.page_up, text, (0, 0))
+        self._assert_change(self.editor.page_up, text, (0, 0))
+        self._assert_change(self.editor.page_down, text, (0, 3))
+        self._assert_change(self.editor.page_down, text, (0, 3))
 
     def test_join_lines(self):
         self._set_editor(" \nab-  \n  -cd  ", (4, 2))
-        self._assert_changes([(self.editor.join_lines, " \nab- -cd  ", (3, 1)),
-                              (self.editor.join_lines, "ab- -cd  ", (0, 0)),
-                              (self.editor.join_lines, "ab- -cd  ", (0, 0))])
+        self._assert_change(self.editor.join_lines, " \nab- -cd  ", (3, 1))
+        self._assert_change(self.editor.join_lines, "ab- -cd  ", (0, 0))
+        self._assert_change(self.editor.join_lines, "ab- -cd  ", (0, 0))
 
     def test_delete_line(self):
         self._set_editor("a  \ndef", (1, 0))
-        self._assert_changes([(self.editor.delete_line, "adef", (1, 0)),
-                              (self.editor.delete_line, "a", (1, 0))])
+        self._assert_change(self.editor.delete_line, "adef", (1, 0))
+        self._assert_change(self.editor.delete_line, "a", (1, 0))
         self._set_editor("\nabc", (0, 0))
-        self._assert_changes([(self.editor.delete_line, "abc", (0, 0)),
-                              (self.editor.delete_line, "", (0, 0)),
-                              (self.editor.delete_line, "", (0, 0))])
+        self._assert_change(self.editor.delete_line, "abc", (0, 0))
+        self._assert_change(self.editor.delete_line, "", (0, 0))
+        self._assert_change(self.editor.delete_line, "", (0, 0))
 
     def test_tab_align(self):
         text = " a\n  b"
         self._set_editor(text, (0, 0))
-        self._assert_changes([(self.editor.tab_align, text, (0, 0)),
-                              (self.editor.cursor_down, text, (0, 1)),
-                              (self.editor.tab_align, " a\n b", (1, 1))])
+        self._assert_change(self.editor.tab_align, text, (0, 0))
+        self._assert_change(self.editor.cursor_down, text, (0, 1))
+        self._assert_change(self.editor.tab_align, " a\n b", (1, 1))
 
     def test_comment_lines(self):
         # from scratch
         self._set_editor("", (0, 0))
-        self._assert_changes([(self.editor.comment_lines, "# ", (2, 0))])
+        self._assert_change(self.editor.comment_lines, "# ", (2, 0))
         # No selection
         self._set_editor("a", (0, 0))
-        self._assert_changes([(self.editor.comment_lines, "a  # ", (5, 0))])
+        self._assert_change(self.editor.comment_lines, "a  # ", (5, 0))
         # Comment when comment exists
         self.editor.jump_to_start_of_line()
-        self._assert_changes([(self.editor.comment_lines, "a  # ", (4, 0))])
+        self._assert_change(self.editor.comment_lines, "a  # ", (4, 0))
         # Selection containing blank lines
         text = "  a\n\n b\n"
         self._set_editor(text, (0, 0))
@@ -181,30 +193,30 @@ class EditorTestCase(unittest.TestCase):
         self.editor.cursor_down()
         self.editor.cursor_down()
         self.editor.cursor_down()
-        self._assert_changes([(self.editor.comment_lines, " #  a\n\n # b\n", (0, 3))])
+        self._assert_change(self.editor.comment_lines, " #  a\n\n # b\n", (0, 3))
         self.assertEqual(self.editor.mark, None)
         # Undo comments in selection
         self.editor.set_mark()
         self.editor.cursor_up()
         self.editor.cursor_up()
         self.editor.cursor_up()
-        self._assert_changes([(self.editor.comment_lines, text, (0, 0))])
+        self._assert_change(self.editor.comment_lines, text, (0, 0))
         # Selection on one line, in middle
         self._set_editor("abc", (1, 0))
         self.editor.set_mark()
         self.editor.cursor_right()
-        self._assert_changes([(self.editor.comment_lines, "a# b\nc", (4, 0))])
+        self._assert_change(self.editor.comment_lines, "a# b\nc", (4, 0))
         # Selection on one line, on right
         self._set_editor("ab", (1, 0))
         self.editor.set_mark()
         self.editor.cursor_right()
-        self._assert_changes([(self.editor.comment_lines, "a# b", (4, 0))])
+        self._assert_change(self.editor.comment_lines, "a# b", (4, 0))
         # Multi-line selection, starting middle, ending middle. Trailing unselected line
         self._set_editor("abc\ndef\nghi\njkl", (2, 0))
         self.editor.set_mark()
         self.editor.cursor_down()
         self.editor.cursor_down()
-        self._assert_changes([(self.editor.comment_lines, "ab# c\n# def\n# gh\ni\njkl", (4, 2))])
+        self._assert_change(self.editor.comment_lines, "ab# c\n# def\n# gh\ni\njkl", (4, 2))
 
 
 if __name__ == "__main__":
