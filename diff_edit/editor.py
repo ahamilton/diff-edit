@@ -197,6 +197,7 @@ class Editor:
         self.is_editing = True
         self.theme_index = 0
         self.previous_term_code = None
+        self.history = []
 
     @property
     def cursor_x(self):
@@ -536,6 +537,9 @@ class Editor:
         if self.previous_term_code == terminal.CTRL_X:
             self.quit()
 
+    def undo(self):
+        self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
+
     def get_text(self):
         return self.text_widget.get_text()
 
@@ -557,7 +561,12 @@ class Editor:
 
     _PRINTABLE = string.printable[:-5]
 
+    def add_to_history(self):
+        self.history.append((self.text_widget.actual_text.copy(), self._cursor_x, self._cursor_y))
+
     def on_keyboard_input(self, term_code):
+        if term_code != terminal.CTRL_UNDERSCORE:
+            self.add_to_history()
         if term_code in Editor.KEY_MAP:
             with contextlib.suppress(IndexError):
                 Editor.KEY_MAP[term_code](self)
@@ -634,7 +643,8 @@ class Editor:
         terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
-        terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align}
+        terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
+        terminal.CTRL_UNDERSCORE: undo}
 
 
 def main():

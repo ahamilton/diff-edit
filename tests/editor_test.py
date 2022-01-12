@@ -218,6 +218,15 @@ class EditorTestCase(unittest.TestCase):
         self.editor.cursor_down()
         self._assert_change(self.editor.comment_lines, "ab# c\n# def\n# gh\ni\njkl", (4, 2))
 
+    def test_undo(self):
+        self._set_editor("ab", (1, 0))
+        self.editor.add_to_history()
+        self.editor.enter()
+        self.editor.add_to_history()
+        self.editor.enter()
+        self._assert_change(self.editor.undo, "a\nb", (0, 1))
+        self._assert_change(self.editor.undo, "ab", (1, 0))
+
 
 if __name__ == "__main__":
     unittest.main()
