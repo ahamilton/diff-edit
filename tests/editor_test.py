@@ -107,18 +107,16 @@ class EditorTestCase(unittest.TestCase):
         text = ("a\n"
                 "bc")
         self._set_editor(text, (0, 0))
-        up, down = self.editor.cursor_up, self.editor.cursor_down
-        left, right = self.editor.cursor_left, self.editor.cursor_right
-        self._assert_change(up, text, (0, 0))
-        self._assert_change(left, text, (0, 0))
-        self._assert_change(right, text, (1, 0))
-        self._assert_change(right, text, (0, 1))
-        self._assert_change(left, text, (1, 0))
-        self._assert_change(down, text, (1, 1))
-        self._assert_change(right, text, (2, 1))
-        self._assert_change(right, text, (2, 1))
-        self._assert_change(up, text, (1, 0))
-        self._assert_change(down, text, (2, 1))
+        self._assert_change(self.editor.cursor_up, text, (0, 0))
+        self._assert_change(self.editor.cursor_left, text, (0, 0))
+        self._assert_change(self.editor.cursor_right, text, (1, 0))
+        self._assert_change(self.editor.cursor_right, text, (0, 1))
+        self._assert_change(self.editor.cursor_left, text, (1, 0))
+        self._assert_change(self.editor.cursor_down, text, (1, 1))
+        self._assert_change(self.editor.cursor_right, text, (2, 1))
+        self._assert_change(self.editor.cursor_right, text, (2, 1))
+        self._assert_change(self.editor.cursor_up, text, (1, 0))
+        self._assert_change(self.editor.cursor_down, text, (2, 1))
         self._assert_change(self.editor.jump_to_start_of_line, text, (0, 1))
         self._assert_change(self.editor.jump_to_end_of_line, text, (2, 1))
 
@@ -126,17 +124,16 @@ class EditorTestCase(unittest.TestCase):
         text = ("ab .dj\n"
                 " bc*d")
         self._set_editor(text, (0, 0))
-        next, previous = self.editor.next_word, self.editor.previous_word
-        self._assert_change(next, text, (2, 0))
-        self._assert_change(next, text, (6, 0))
-        self._assert_change(next, text, (3, 1))
-        self._assert_change(next, text, (5, 1))
-        self._assert_change(next, text, (5, 1))
-        self._assert_change(previous, text, (4, 1))
-        self._assert_change(previous, text, (1, 1))
-        self._assert_change(previous, text, (4, 0))
-        self._assert_change(previous, text, (0, 0))
-        self._assert_change(previous, text, (0, 0))
+        self._assert_change(self.editor.next_word, text, (2, 0))
+        self._assert_change(self.editor.next_word, text, (6, 0))
+        self._assert_change(self.editor.next_word, text, (3, 1))
+        self._assert_change(self.editor.next_word, text, (5, 1))
+        self._assert_change(self.editor.next_word, text, (5, 1))
+        self._assert_change(self.editor.previous_word, text, (4, 1))
+        self._assert_change(self.editor.previous_word, text, (1, 1))
+        self._assert_change(self.editor.previous_word, text, (4, 0))
+        self._assert_change(self.editor.previous_word, text, (0, 0))
+        self._assert_change(self.editor.previous_word, text, (0, 0))
 
     def test_jumping_blocks(self):
         text = "a\nb\n\nc\nd"
