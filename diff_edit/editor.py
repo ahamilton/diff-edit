@@ -538,7 +538,8 @@ class Editor:
             self.quit()
 
     def ring_bell(self):
-        print("\a", end="")
+        if "unittest" not in sys.modules:
+            print("\a", end="")
 
     def undo(self):
         self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
