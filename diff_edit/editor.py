@@ -541,10 +541,7 @@ class Editor:
         print("\a", end="")
 
     def undo(self):
-        try:
-            self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
-        except IndexError:
-            self.ring_bell()
+        self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
 
     def abort_command(self):
         self.mark = None
@@ -578,8 +575,10 @@ class Editor:
         if term_code != terminal.CTRL_UNDERSCORE:
             self.add_to_history()
         if term_code in Editor.KEY_MAP:
-            with contextlib.suppress(IndexError):
+            try:
                 Editor.KEY_MAP[term_code](self)
+            except IndexError:
+                self.ring_bell()
         elif term_code in self._PRINTABLE:
             self.insert_text(term_code)
         else:
