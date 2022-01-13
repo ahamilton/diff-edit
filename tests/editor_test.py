@@ -65,8 +65,7 @@ class EditorTestCase(unittest.TestCase):
         self.editor.cursor_x, self.editor.cursor_y = cursor_position
 
     def _assert_change(self, method, expected_text, expected_cursor_position):
-        with contextlib.suppress(IndexError):
-            method()
+        method()
         self._assert_editor(expected_text, expected_cursor_position)
 
     def test_empty_editor(self):
@@ -92,7 +91,7 @@ class EditorTestCase(unittest.TestCase):
         self._assert_change(self.editor.delete_character, "a\nc", (1, 0))
         self._assert_change(self.editor.delete_character, "ac", (1, 0))
         self._assert_change(self.editor.delete_character, "a", (1, 0))
-        self._assert_change(self.editor.delete_character, "a", (1, 0))
+        self.assertRaises(IndexError, self.editor.delete_character)
 
     def test_backspace(self):
         self._set_editor("a\n"
@@ -107,14 +106,14 @@ class EditorTestCase(unittest.TestCase):
         text = ("a\n"
                 "bc")
         self._set_editor(text, (0, 0))
-        self._assert_change(self.editor.cursor_up, text, (0, 0))
-        self._assert_change(self.editor.cursor_left, text, (0, 0))
+        self.assertRaises(IndexError, self.editor.cursor_up)
+        self.assertRaises(IndexError, self.editor.cursor_left)
         self._assert_change(self.editor.cursor_right, text, (1, 0))
         self._assert_change(self.editor.cursor_right, text, (0, 1))
         self._assert_change(self.editor.cursor_left, text, (1, 0))
         self._assert_change(self.editor.cursor_down, text, (1, 1))
         self._assert_change(self.editor.cursor_right, text, (2, 1))
-        self._assert_change(self.editor.cursor_right, text, (2, 1))
+        self.assertRaises(IndexError, self.editor.cursor_right)
         self._assert_change(self.editor.cursor_up, text, (1, 0))
         self._assert_change(self.editor.cursor_down, text, (2, 1))
         self._assert_change(self.editor.jump_to_start_of_line, text, (0, 1))
@@ -128,20 +127,24 @@ class EditorTestCase(unittest.TestCase):
         self._assert_change(self.editor.next_word, text, (6, 0))
         self._assert_change(self.editor.next_word, text, (3, 1))
         self._assert_change(self.editor.next_word, text, (5, 1))
-        self._assert_change(self.editor.next_word, text, (5, 1))
+        self.assertRaises(IndexError, self.editor.next_word)
         self._assert_change(self.editor.previous_word, text, (4, 1))
         self._assert_change(self.editor.previous_word, text, (1, 1))
         self._assert_change(self.editor.previous_word, text, (4, 0))
-        self._assert_change(self.editor.previous_word, text, (0, 0))
-        self._assert_change(self.editor.previous_word, text, (0, 0))
+        self.assertRaises(IndexError, self.editor.previous_word)
+        self._assert_editor(text, (0, 0))
+        self.assertRaises(IndexError, self.editor.previous_word)
+        self._assert_editor(text, (0, 0))
 
     def test_jumping_blocks(self):
         text = "a\nb\n\nc\nd"
         self._set_editor(text, (0, 0))
-        self._assert_change(self.editor.jump_to_block_start, text, (0, 0))
+        self.assertRaises(IndexError, self.editor.jump_to_block_start)
         self._assert_change(self.editor.jump_to_block_end, text, (0, 2))
-        self._assert_change(self.editor.jump_to_block_end, text, (0, 4))
-        self._assert_change(self.editor.jump_to_block_end, text, (0, 4))
+        self.assertRaises(IndexError, self.editor.jump_to_block_end)
+        self._assert_editor(text, (0, 4))
+        self.assertRaises(IndexError, self.editor.jump_to_block_end)
+        self._assert_editor(text, (0, 4))
 
     def test_page_up_and_down(self):
         text = "a\nbb\nc\nd"
@@ -164,7 +167,7 @@ class EditorTestCase(unittest.TestCase):
         self._set_editor("\nabc", (0, 0))
         self._assert_change(self.editor.delete_line, "abc", (0, 0))
         self._assert_change(self.editor.delete_line, "", (0, 0))
-        self._assert_change(self.editor.delete_line, "", (0, 0))
+        self.assertRaises(IndexError, self.editor.delete_line)
 
     def test_tab_align(self):
         text = " a\n  b"
