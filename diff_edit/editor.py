@@ -537,11 +537,18 @@ class Editor:
         if self.previous_term_code == terminal.CTRL_X:
             self.quit()
 
+    def ring_bell(self):
+        print("\a", end="")
+
     def undo(self):
-        self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
+        try:
+            self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
+        except IndexError:
+            self.ring_bell()
 
     def abort_command(self):
         self.mark = None
+        self.ring_bell()
 
     def get_text(self):
         return self.text_widget.get_text()
