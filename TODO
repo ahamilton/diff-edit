@@ -1,8 +1,6 @@
 Todo:
 - Right align the left editor.
 - Keyboard shortcuts for resolving differences.
-- tab key should align code.
-- Disable ctrl-shift-h mode.
 
 
 Done:
@@ -25,6 +23,9 @@ Done:
 - Follow the cursor when moving off the screen to the left or right.
 - Fix coast scrolling.
 - Put it on github.
+- tab key should align code.
 
 
 Shelved:
+- Disable ctrl-shift-h mode.
+  + This mode is only in kitty.
