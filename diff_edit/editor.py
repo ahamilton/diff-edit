@@ -540,6 +540,9 @@ class Editor:
     def undo(self):
         self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
 
+    def abort_command(self):
+        self.mark = None
+
     def get_text(self):
         return self.text_widget.get_text()
 
@@ -644,7 +647,7 @@ class Editor:
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
         terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
-        terminal.CTRL_UNDERSCORE: undo}
+        terminal.CTRL_UNDERSCORE: undo, terminal.CTRL_G: abort_command}
 
 
 def main():

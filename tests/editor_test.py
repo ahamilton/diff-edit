@@ -224,6 +224,12 @@ class EditorTestCase(unittest.TestCase):
         self._assert_change(self.editor.undo, "a\nb", (0, 1))
         self._assert_change(self.editor.undo, "ab", (1, 0))
 
+    def test_abort_command(self):
+        self._set_editor("", (0, 0))
+        self.editor.set_mark()
+        self.editor.abort_command()
+        self.assertEqual(self.editor.mark, None)
+
 
 if __name__ == "__main__":
     unittest.main()
