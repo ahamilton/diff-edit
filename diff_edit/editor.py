@@ -660,7 +660,7 @@ class Editor:
 def main():
     editor = Editor()
     editor.load(sys.argv[1])
-    asyncio.run(fill3.tui("Editor", editor), debug=True)
+    asyncio.run(fill3.tui("Editor", editor))
 
 
 if __name__ == "__main__":
