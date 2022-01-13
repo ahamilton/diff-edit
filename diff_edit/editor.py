@@ -573,7 +573,7 @@ class Editor:
         self.history.append((self.text_widget.actual_text.copy(), self._cursor_x, self._cursor_y))
 
     def on_keyboard_input(self, term_code):
-        if term_code != terminal.CTRL_UNDERSCORE:
+        if term_code not in [terminal.CTRL_UNDERSCORE, terminal.CTRL_Z]:
             self.add_to_history()
         if term_code in Editor.KEY_MAP:
             try:
@@ -654,7 +654,7 @@ class Editor:
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
         terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
-        terminal.CTRL_UNDERSCORE: undo, terminal.CTRL_G: abort_command}
+        terminal.CTRL_UNDERSCORE: undo, terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command}
 
 
 def main():
