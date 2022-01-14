@@ -119,10 +119,10 @@ class Text:
 
 class Code(Text):
 
-    def __init__(self, text, lexer=PYTHON_LEXER, theme=NATIVE_STYLE):
-        self.lexer = lexer
+    def __init__(self, text, path, theme=NATIVE_STYLE):
+        self.lexer = pygments.lexers.get_lexer_for_filename(path, text, stripnl=False)
         self.theme = theme
-        self.padding_char = _syntax_highlight(" ", lexer, theme)
+        self.padding_char = _syntax_highlight(" ", self.lexer, theme)
         Text.__init__(self, text)
 
     def _convert_line(self, line, max_line_length):
@@ -188,8 +188,8 @@ class Editor:
               for style in ["monokai", "fruity", "native"]] + [None]
 
     def __init__(self, text="", path="Untitled"):
-        self.set_text(text)
         self.path = path
+        self.set_text(text)
         self.mark = None
         self.clipboard = None
         self.last_width = 100
@@ -247,8 +247,10 @@ class Editor:
         return (start_x, start_y), (end_x, end_y)
 
     def set_text(self, text):
-        self.text_widget = Code(text)
-        # self.text_widget = Text(text)
+        try:
+            self.text_widget = Code(text, self.path)
+        except pygments.util.ClassNotFound:  # No lexer for path
+            self.text_widget = Text(text)
         self.decor_widget = Decor(self.text_widget,
                                   lambda appearance: add_highlights(self, appearance))
         self.view_widget = fill3.View.from_widget(self.decor_widget)
@@ -259,9 +261,9 @@ class Editor:
         pass
 
     def load(self, path):
+        self.path = path
         with open(path) as file_:
             self.set_text(file_.read())
-        self.path = path
 
     def save(self):
         if self.previous_term_code == terminal.CTRL_X:
