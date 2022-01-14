@@ -1,4 +1,5 @@
 Current:
+- When largest line grows the bounding box should grow.
 
 
 Fixed:
