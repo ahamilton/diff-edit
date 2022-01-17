@@ -1,10 +1,10 @@
 Current:
-- When largest line grows the bounding box should grow.
 
 
 Fixed:
 - Interface freezing often.
 - Fix scrolling.
+- When largest line grows the bounding box should grow.
 
 
 Won't fix:

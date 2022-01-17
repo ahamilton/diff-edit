@@ -60,8 +60,8 @@ def _syntax_highlight(text, lexer, style):
 
 class Text:
 
-    def __init__(self, text, pad_char=" "):
-        self.padding_char = " "
+    def __init__(self, text, padding_char=" "):
+        self.padding_char = padding_char
         self.text, self.actual_text, self.max_line_length = [], [], 0
         lines = [""] if text == "" else text.splitlines()
         if text.endswith("\n"):
@@ -84,11 +84,7 @@ class Text:
             self._replace_lines(key, value)
 
     def _replace_lines(self, slice_, new_lines):
-        new_lengths = [len(line) for line in new_lines]
-        try:
-            max_new_lengths = max(new_lengths)
-        except ValueError:
-            max_new_lengths = 0
+        max_new_lengths = max(len(line) for line in new_lines)
         if max_new_lengths > self.max_line_length:
             padding = self.padding_char * (max_new_lengths - self.max_line_length)
             self.text = [line + padding for line in self.text]
@@ -122,8 +118,8 @@ class Code(Text):
     def __init__(self, text, path, theme=NATIVE_STYLE):
         self.lexer = pygments.lexers.get_lexer_for_filename(path, text, stripnl=False)
         self.theme = theme
-        self.padding_char = _syntax_highlight(" ", self.lexer, theme)
-        Text.__init__(self, text)
+        padding_char = _syntax_highlight(" ", self.lexer, theme)
+        Text.__init__(self, text, padding_char)
 
     def _convert_line(self, line, max_line_length):
         return (termstr.TermStr(line.ljust(max_line_length)) if self.theme is None
