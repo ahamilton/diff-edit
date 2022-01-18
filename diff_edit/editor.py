@@ -109,7 +109,7 @@ class Text:
     def appearance_min(self):
         return self.text
 
-    def appearance(self, dimensions):
+    def appearance_for(self, dimensions):
         return fill3.appearance_resize(self.appearance_min(), dimensions)
 
 
@@ -141,8 +141,8 @@ class Decor:
         self.widget = widget
         self.decorator = decorator
 
-    def appearance(self, dimensions):
-        return self.decorator(self.widget.appearance(dimensions))
+    def appearance_for(self, dimensions):
+        return self.decorator(self.widget.appearance_for(dimensions))
 
     def appearance_min(self):
         return self.decorator(self.widget.appearance_min())
@@ -623,13 +623,13 @@ class Editor:
         return (termstr.TermStr(" " + path_part, self._HEADER_STYLE).bold() +
                 termstr.TermStr(cursor_position + " ", self._HEADER_STYLE))
 
-    def appearance(self, dimensions):
+    def appearance_for(self, dimensions):
         width, height = dimensions
         is_changed = self.text_widget.actual_text != self.original_text
         header = self.get_header(self.path, width, self.cursor_x, self.cursor_y, is_changed)
         self.last_width = width
         self.last_height = height
-        result = [header] + self.view_widget.appearance((width, height - 1))
+        result = [header] + self.view_widget.appearance_for((width, height - 1))
         return result
 
     KEY_MAP = {

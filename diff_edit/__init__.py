@@ -332,7 +332,7 @@ class DiffEditor:
             line[-1] = "↓"
         return columns
 
-    def appearance(self, dimensions):
+    def appearance_for(self, dimensions):
         width, height = self.last_dimensions = dimensions
         if self.diff is None:
             self.update_diff()
@@ -340,8 +340,8 @@ class DiffEditor:
         divider_width = 3
         left_width = (width - divider_width) // 2
         right_width = width - divider_width - left_width
-        left_appearance = self.left_editor.appearance((left_width, height))
-        right_appearance = self.right_editor.appearance((right_width, height))
+        left_appearance = self.left_editor.appearance_for((left_width, height))
+        right_appearance = self.right_editor.appearance_for((right_width, height))
         inactive_appearance = (right_appearance if self.left_editor is self.editors[0]
                                else left_appearance)
         inactive_appearance[0] = highlight_str(inactive_appearance[0], termstr.Color.black, 0.5)
