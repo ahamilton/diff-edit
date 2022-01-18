@@ -5,6 +5,7 @@
 import asyncio
 import contextlib
 import functools
+import os
 import string
 import sys
 
@@ -184,7 +185,7 @@ class Editor:
               for style in ["monokai", "fruity", "native"]] + [None]
 
     def __init__(self, text="", path="Untitled"):
-        self.path = path
+        self.path = os.path.normpath(path)
         self.set_text(text)
         self.mark = None
         self.clipboard = None
@@ -257,7 +258,7 @@ class Editor:
         pass
 
     def load(self, path):
-        self.path = path
+        self.path = os.path.normpath(path)
         with open(path) as file_:
             self.set_text(file_.read())
 
