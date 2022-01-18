@@ -15,7 +15,7 @@ class TextWidgetTestCase(unittest.TestCase):
 
     def test_padding(self):
         text = editor.Text("a\nbb")
-        self.assertEqual(text.appearance_min(), ["a ", "bb"])
+        self.assertEqual(text.appearance(), ["a ", "bb"])
 
     def test_get_line(self):
         text = editor.Text("")
@@ -27,22 +27,22 @@ class TextWidgetTestCase(unittest.TestCase):
     def test_change_line(self):
         text = editor.Text("a\nbb")
         text[0] = "aaa"
-        self.assertEqual(text.appearance_min(), ["aaa", "bb "])
+        self.assertEqual(text.appearance(), ["aaa", "bb "])
 
     def test_insert_line(self):
         text = editor.Text("a\nbb")
         text.insert(1, "ccc")
-        self.assertEqual(text.appearance_min(), ["a  ", "ccc", "bb "])
+        self.assertEqual(text.appearance(), ["a  ", "ccc", "bb "])
 
     def test_append_line(self):
         text = editor.Text("a")
         text.append("bb")
-        self.assertEqual(text.appearance_min(), ["a ", "bb"])
+        self.assertEqual(text.appearance(), ["a ", "bb"])
 
     def test_replace_lines(self):
         text = editor.Text("a\nbb\nc\nd")
         text[1:3] = ["e", "f", "g"]
-        self.assertEqual(text.appearance_min(), ["a", "e", "f", "g", "d"])
+        self.assertEqual(text.appearance(), ["a", "e", "f", "g", "d"])
 
     def test_len(self):
         text = editor.Text("a\nbb\nc\nd")

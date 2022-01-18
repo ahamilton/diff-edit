@@ -106,11 +106,11 @@ class Text:
     def get_text(self):
         return "\n".join(self)
 
-    def appearance_min(self):
+    def appearance(self):
         return self.text
 
     def appearance_for(self, dimensions):
-        return fill3.appearance_resize(self.appearance_min(), dimensions)
+        return fill3.appearance_resize(self.appearance(), dimensions)
 
 
 class Code(Text):
@@ -144,8 +144,8 @@ class Decor:
     def appearance_for(self, dimensions):
         return self.decorator(self.widget.appearance_for(dimensions))
 
-    def appearance_min(self):
-        return self.decorator(self.widget.appearance_min())
+    def appearance(self):
+        return self.decorator(self.widget.appearance())
 
 
 def highlight_part(line, start, end):
@@ -610,8 +610,8 @@ class Editor:
         self.follow_cursor()
         fill3.APPEARANCE_CHANGED_EVENT.set()
 
-    def appearance_min(self):
-        return self.decor_widget.appearance_min()
+    def appearance(self):
+        return self.decor_widget.appearance()
 
     _HEADER_STYLE = termstr.CharStyle(fg_color=termstr.Color.white, bg_color=termstr.Color.green)
 
