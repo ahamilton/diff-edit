@@ -128,7 +128,7 @@ def draw_connector(columns, color, left_y, right_y):
 class DiffEditor:
 
     def __init__(self, left_path, right_path):
-        self.left_editor = editor.Editor()
+        self.left_editor = editor.Editor(is_right_aligned=True)
         self.left_editor.load(left_path)
         self.left_editor.view_widget.is_scrollbar_right = False
         self.right_editor = editor.Editor()
@@ -370,6 +370,7 @@ def main():
     if path_b is None:
         editor_ = editor.Editor(path_a)
         editor_.load(path_a)
+        editor_.is_right_aligned = True
     else:
         editor_ = DiffEditor(path_a, path_b)
     asyncio.run(fill3.tui(PROJECT_NAME, editor_))

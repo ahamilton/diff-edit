@@ -184,7 +184,7 @@ class Editor:
     THEMES = [pygments.styles.get_style_by_name(style)
               for style in ["monokai", "fruity", "native"]] + [None]
 
-    def __init__(self, text="", path="Untitled"):
+    def __init__(self, text="", path="Untitled", is_right_aligned=False):
         self.path = os.path.normpath(path)
         self.set_text(text)
         self.mark = None
@@ -195,6 +195,7 @@ class Editor:
         self.theme_index = 0
         self.previous_term_code = None
         self.history = []
+        self.is_right_aligned = is_right_aligned
 
     @property
     def cursor_x(self):
@@ -626,6 +627,13 @@ class Editor:
 
     def appearance_for(self, dimensions):
         width, height = dimensions
+        text_width = self.text_widget.max_line_length
+        if self.is_right_aligned and text_width < width:
+            x, y = self.view_widget.position
+            new_x = text_width - width
+            if self.cursor_x == text_width:
+                new_x += 1
+            self.view_widget.position = new_x, y
         is_changed = self.text_widget.actual_text != self.original_text
         header = self.get_header(self.path, width, self.cursor_x, self.cursor_y, is_changed)
         self.last_width = width

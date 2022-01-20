@@ -1,5 +1,4 @@
 Todo:
-- Right align the left editor.
 - Keyboard shortcuts for resolving differences.
 - How to handle tabs?
 - Colourise file name.
@@ -29,6 +28,7 @@ Done:
 - Fix coast scrolling.
 - Put it on github.
 - tab key should align code.
+- Right align the left editor.
 
 
 Shelved:
