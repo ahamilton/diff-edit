@@ -130,7 +130,7 @@ class DiffEditor:
     def __init__(self, left_path, right_path):
         self.left_editor = editor.Editor(is_right_aligned=True)
         self.left_editor.load(left_path)
-        self.left_editor.view_widget.is_scrollbar_right = False
+        self.left_editor.view_widget.is_left_scrollbar = True
         self.right_editor = editor.Editor()
         self.right_editor.load(right_path)
         self.show_sub_highlights = True
