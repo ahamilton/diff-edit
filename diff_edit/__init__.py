@@ -370,7 +370,6 @@ def main():
     if path_b is None:
         editor_ = editor.Editor(path_a)
         editor_.load(path_a)
-        editor_.is_right_aligned = True
     else:
         editor_ = DiffEditor(path_a, path_b)
     asyncio.run(fill3.tui(PROJECT_NAME, editor_))
