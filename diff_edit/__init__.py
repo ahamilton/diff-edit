@@ -128,7 +128,7 @@ def draw_connector(columns, color, left_y, right_y):
 class DiffEditor:
 
     def __init__(self, left_path, right_path):
-        self.left_editor = editor.Editor(is_right_aligned=True)
+        self.left_editor = editor.Editor(is_left_aligned=False)
         self.left_editor.load(left_path)
         self.left_editor.view_widget.is_left_scrollbar = True
         self.right_editor = editor.Editor()

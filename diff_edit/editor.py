@@ -184,8 +184,9 @@ class Editor:
     THEMES = [pygments.styles.get_style_by_name(style)
               for style in ["monokai", "fruity", "native"]] + [None]
 
-    def __init__(self, text="", path="Untitled", is_right_aligned=False):
+    def __init__(self, text="", path="Untitled", is_left_aligned=True):
         self.path = os.path.normpath(path)
+        self.is_left_aligned = is_left_aligned
         self.set_text(text)
         self.mark = None
         self.clipboard = None
@@ -195,7 +196,6 @@ class Editor:
         self.theme_index = 0
         self.previous_term_code = None
         self.history = []
-        self.is_right_aligned = is_right_aligned
 
     @property
     def cursor_x(self):
@@ -252,6 +252,9 @@ class Editor:
         self.decor_widget = Decor(self.text_widget,
                                   lambda appearance: add_highlights(self, appearance))
         self.view_widget = fill3.View.from_widget(self.decor_widget)
+        if not self.is_left_aligned:
+            self.view_widget.portal.is_scroll_limited = True
+            self.view_widget.portal.is_left_aligned = False
         self.cursor_x, self.cursor_y = 0, 0
         self.original_text = self.text_widget.actual_text.copy()
 
@@ -628,12 +631,6 @@ class Editor:
     def appearance_for(self, dimensions):
         width, height = dimensions
         text_width = self.text_widget.max_line_length
-        if self.is_right_aligned and text_width < width:
-            x, y = self.view_widget.position
-            new_x = text_width - width
-            if self.cursor_x == text_width:
-                new_x += 1
-            self.view_widget.position = new_x, y
         is_changed = self.text_widget.actual_text != self.original_text
         header = self.get_header(self.path, width, self.cursor_x, self.cursor_y, is_changed)
         self.last_width = width
