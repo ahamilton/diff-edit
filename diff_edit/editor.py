@@ -222,21 +222,7 @@ class Editor:
 
     @scroll_position.setter
     def scroll_position(self, position):
-        x, y = position
-        text_width = self.text_widget.max_line_length
-        if x < 0:
-            new_x = 0
-        elif x > text_width - self.last_width + 2:
-            new_x = max(text_width - self.last_width + 2, 0)
-        else:
-            new_x = x
-        if y < 0:
-            new_y = 0
-        elif y > len(self.text_widget) - self.last_height + 2:
-            new_y = max(len(self.text_widget) - self.last_height + 2, 0)
-        else:
-            new_y = y
-        self.view_widget.position = new_x, new_y
+        self.view_widget.position = position
 
     def get_selection_interval(self):
         mark_x, mark_y = self.mark
@@ -252,8 +238,8 @@ class Editor:
         self.decor_widget = Decor(self.text_widget,
                                   lambda appearance: add_highlights(self, appearance))
         self.view_widget = fill3.View.from_widget(self.decor_widget)
+        self.view_widget.portal.is_scroll_limited = True
         if not self.is_left_aligned:
-            self.view_widget.portal.is_scroll_limited = True
             self.view_widget.portal.is_left_aligned = False
         self.cursor_x, self.cursor_y = 0, 0
         self.original_text = self.text_widget.actual_text.copy()
