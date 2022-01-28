@@ -5,7 +5,6 @@ Todo:
 - Bulk indent/dedent.
 - Search.
 - Search and replace.
-- Overwrite mode.
 - Large pastes.
 
 
@@ -31,6 +30,7 @@ Done:
 - Put it on github.
 - tab key should align code.
 - Right align the left editor.
+- Overwrite mode.
 
 
 Shelved:

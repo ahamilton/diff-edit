@@ -194,6 +194,7 @@ class Editor:
         self.last_height = 40
         self.is_editing = True
         self.theme_index = 0
+        self.is_overwriting = False
         self.previous_term_code = None
         self.history = []
 
@@ -341,8 +342,9 @@ class Editor:
     def insert_text(self, text):
         try:
             current_line = self.text_widget[self.cursor_y]
-            new_line = current_line[:self.cursor_x] + text + current_line[self.cursor_x:]
-            self.text_widget[self.cursor_y] = new_line
+            replace_count = len(text) if self.is_overwriting else 0
+            self.text_widget[self.cursor_y] = (current_line[:self.cursor_x] + text
+                                               + current_line[self.cursor_x+replace_count:])
         except IndexError:
             self.text_widget.append(text)
         self.cursor_x += len(text)
@@ -533,6 +535,9 @@ class Editor:
     def undo(self):
         self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
 
+    def toggle_overwrite(self):
+        self.is_overwriting = not self.is_overwriting
+
     def abort_command(self):
         self.mark = None
         self.ring_bell()
@@ -644,7 +649,8 @@ class Editor:
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
         terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
-        terminal.CTRL_UNDERSCORE: undo, terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command}
+        terminal.CTRL_UNDERSCORE: undo, terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command,
+        terminal.INSERT: toggle_overwrite}
 
 
 def main():

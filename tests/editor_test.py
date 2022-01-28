@@ -80,6 +80,15 @@ class EditorTestCase(unittest.TestCase):
         self._assert_editor("a", (1, 0))
         self.editor.insert_text("bc")
         self._assert_editor("abc", (3, 0))
+        # overwrite
+        self.editor.toggle_overwrite()
+        self.editor.cursor_left()
+        self.editor.insert_text("d")
+        self._assert_editor("abd", (3, 0))
+        self.editor.cursor_left()
+        self.editor.cursor_left()
+        self.editor.insert_text("ef")
+        self._assert_editor("aef", (3, 0))
 
     def test_enter(self):
         self._set_editor("ab", (1, 0))
