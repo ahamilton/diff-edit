@@ -83,11 +83,11 @@ class EditorTestCase(unittest.TestCase):
         # overwrite
         self.editor.toggle_overwrite()
         self.editor.cursor_left()
-        self.editor.insert_text("d")
+        self.editor.insert_text("d", is_overwriting=True)
         self._assert_editor("abd", (3, 0))
         self.editor.cursor_left()
         self.editor.cursor_left()
-        self.editor.insert_text("ef")
+        self.editor.insert_text("ef", is_overwriting=True)
         self._assert_editor("aef", (3, 0))
 
     def test_enter(self):

@@ -339,10 +339,10 @@ class Editor:
             self.text_widget[start_y:end_y+1] = [new_line]
             self.cursor_x, self.cursor_y = start_x, start_y
 
-    def insert_text(self, text):
+    def insert_text(self, text, is_overwriting=False):
         try:
             current_line = self.text_widget[self.cursor_y]
-            replace_count = len(text) if self.is_overwriting else 0
+            replace_count = len(text) if is_overwriting else 0
             self.text_widget[self.cursor_y] = (current_line[:self.cursor_x] + text
                                                + current_line[self.cursor_x+replace_count:])
         except IndexError:
@@ -575,7 +575,7 @@ class Editor:
             except IndexError:
                 self.ring_bell()
         elif term_code in self._PRINTABLE:
-            self.insert_text(term_code)
+            self.insert_text(term_code, is_overwriting=self.is_overwriting)
         else:
             self.insert_text(repr(term_code))
         self.previous_term_code = term_code
