@@ -2,7 +2,6 @@ Todo:
 - Keyboard shortcuts for resolving differences.
 - How to handle tabs?
 - Colourise file name.
-- Bulk indent/dedent.
 - Search.
 - Search and replace.
 - Large pastes.
@@ -31,6 +30,7 @@ Done:
 - tab key should align code.
 - Right align the left editor.
 - Overwrite mode.
+- Bulk indent/dedent.
 
 
 Shelved:

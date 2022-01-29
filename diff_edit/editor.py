@@ -16,7 +16,7 @@ import pygments.lexers
 import pygments.styles
 import termstr
 
-   
+
 @functools.lru_cache(maxsize=100)
 def highlight_str(line, bg_color, transparency=0.6):
     def blend_style(style):
@@ -181,6 +181,7 @@ def add_highlights(self, appearance):
 
 class Editor:
 
+    TAB_SIZE = 4
     THEMES = [pygments.styles.get_style_by_name(style)
               for style in ["monokai", "fruity", "native"]] + [None]
 
@@ -538,6 +539,50 @@ class Editor:
     def toggle_overwrite(self):
         self.is_overwriting = not self.is_overwriting
 
+    def _work_lines(self):
+        if self.mark is None:
+            return [self.cursor_y]
+        else:
+            (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
+            return range(start_y + (start_x > 0), end_y + 1 - (end_x == 0))
+
+    def indent(self):
+        indent_ = " " * Editor.TAB_SIZE
+        for line_num in self._work_lines():
+            if self.text_widget[line_num].strip() == "":
+                self.text_widget[line_num] = ""
+                continue
+            self.text_widget[line_num] = indent_ + self.text_widget[line_num]
+            if self.cursor_y == line_num:
+                self.cursor_x += Editor.TAB_SIZE
+
+    def dedent(self):
+        indent_ = " " * Editor.TAB_SIZE
+        line_nums = self._work_lines()
+        if not all(self.text_widget[line_num].startswith(indent_)
+                   or self.text_widget[line_num].strip() == "" for line_num in line_nums):
+            self.ring_bell()
+            return
+        for line_num in line_nums:
+            if self.cursor_y == line_num:
+                self.cursor_x = max(self.cursor_x - Editor.TAB_SIZE, 0)
+            if self.text_widget[line_num].strip() == "":
+                self.text_widget[line_num] = ""
+                continue
+            self.text_widget[line_num] = self.text_widget[line_num][Editor.TAB_SIZE:]
+
+    def greater_than_key(self):
+        if self.previous_term_code == terminal.CTRL_C:
+            self.indent()
+        else:
+            self.insert_text(">", is_overwriting=self.is_overwriting)
+
+    def less_than_key(self):
+        if self.previous_term_code == terminal.CTRL_C:
+            self.dedent()
+        else:
+            self.insert_text("<", is_overwriting=self.is_overwriting)
+
     def abort_command(self):
         self.mark = None
         self.ring_bell()
@@ -621,7 +666,6 @@ class Editor:
 
     def appearance_for(self, dimensions):
         width, height = dimensions
-        text_width = self.text_widget.max_line_length
         is_changed = self.text_widget.actual_text != self.original_text
         header = self.get_header(self.path, width, self.cursor_x, self.cursor_y, is_changed)
         self.last_width = width
@@ -650,7 +694,7 @@ class Editor:
         terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
         terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
         terminal.CTRL_UNDERSCORE: undo, terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command,
-        terminal.INSERT: toggle_overwrite}
+        terminal.INSERT: toggle_overwrite, ">": greater_than_key, "<": less_than_key}
 
 
 def main():

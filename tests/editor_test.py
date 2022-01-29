@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 
-import contextlib
 import unittest
 
 import diff_edit.editor as editor
@@ -89,6 +88,47 @@ class EditorTestCase(unittest.TestCase):
         self.editor.cursor_left()
         self.editor.insert_text("ef", is_overwriting=True)
         self._assert_editor("aef", (3, 0))
+
+    def test_indent(self):
+        # no selection
+        self._set_editor("ab", (1, 0))
+        self._assert_change(self.editor.indent, "    ab", (5, 0))
+        self._set_editor("   ", (1, 0))
+        self._assert_change(self.editor.indent, "", (0, 0))
+        # on selection
+        self._set_editor("a\nb\nc", (0, 0))
+        self.editor.set_mark()
+        self.editor.cursor_down()
+        self._assert_change(self.editor.indent, "    a\nb\nc", (0, 1))
+        self.assertIsNotNone(self.editor.mark)
+        self._set_editor("a\nb\nc", (1, 0))
+        self.editor.set_mark()
+        self.editor.cursor_left()
+        self.editor.cursor_down()
+        self.editor.cursor_down()
+        self._assert_change(self.editor.indent, "a\n    b\nc", (0, 2))
+        self._set_editor("a\nb\nc", (0, 1))
+        self.editor.set_mark()
+        self.editor.cursor_down()
+        self.editor.cursor_right()
+        self._assert_change(self.editor.indent, "a\n    b\n    c", (5, 2))
+
+    def test_dedent(self):
+        # no selection
+        self._set_editor("    ab", (2, 0))
+        self._assert_change(self.editor.dedent, "ab", (0, 0))
+        self._set_editor("    ab", (5, 0))
+        self._assert_change(self.editor.dedent, "ab", (1, 0))
+        self._set_editor("   ab", (0, 0))
+        self._assert_change(self.editor.dedent, "   ab", (0, 0))
+        self._set_editor("   ", (1, 0))
+        self._assert_change(self.editor.dedent, "", (0, 0))
+        # on selection
+        self._set_editor("    a\n  \n    b", (0, 0))
+        self.editor.set_mark()
+        self.editor.cursor_down()
+        self.editor.cursor_down()
+        self._assert_change(self.editor.dedent, "a\n\n    b", (0, 2))
 
     def test_enter(self):
         self._set_editor("ab", (1, 0))
