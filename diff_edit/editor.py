@@ -154,31 +154,6 @@ def highlight_part(line, start, end):
             line[end:])
 
 
-def add_highlights(self, appearance):
-    result = appearance.copy()
-    if not self.is_editing:
-        return result
-    if self.mark is None:
-        result[self.cursor_y] = highlight_str(result[self.cursor_y], termstr.Color.white, 0.8)
-    else:
-        (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
-        if start_y == end_y:
-            result[start_y] = highlight_part(result[start_y], start_x, end_x)
-        else:
-            result[start_y] = highlight_part(result[start_y], start_x, len(result[start_y]))
-            view_x, view_y = self.view_widget.position
-            for line_num in range(max(start_y+1, view_y), min(end_y, view_y + self.last_height)):
-                result[line_num] = highlight_part(result[line_num], 0, len(result[line_num]))
-            result[end_y] = highlight_part(result[end_y], 0, end_x)
-    if self.cursor_x >= len(result[0]):
-        result = fill3.appearance_resize(result, (self.cursor_x+1, len(result)))
-    cursor_line = result[self.cursor_y]
-    result[self.cursor_y] = (cursor_line[:self.cursor_x] +
-                             termstr.TermStr(cursor_line[self.cursor_x]).invert() +
-                             cursor_line[self.cursor_x+1:])
-    return result
-
-
 class Editor:
 
     TAB_SIZE = 4
@@ -232,13 +207,37 @@ class Editor:
             [(mark_y, mark_x), (self.cursor_y, self.cursor_x)])
         return (start_x, start_y), (end_x, end_y)
 
+    def add_highlights(self, appearance):
+        result = appearance.copy()
+        if not self.is_editing:
+            return result
+        if self.mark is None:
+            result[self.cursor_y] = highlight_str(result[self.cursor_y], termstr.Color.white, 0.8)
+        else:
+            (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
+            if start_y == end_y:
+                result[start_y] = highlight_part(result[start_y], start_x, end_x)
+            else:
+                result[start_y] = highlight_part(result[start_y], start_x, len(result[start_y]))
+                view_x, view_y = self.view_widget.position
+                for line_num in range(max(start_y+1, view_y), min(end_y, view_y+self.last_height)):
+                    result[line_num] = highlight_part(result[line_num], 0, len(result[line_num]))
+                result[end_y] = highlight_part(result[end_y], 0, end_x)
+        if self.cursor_x >= len(result[0]):
+            result = fill3.appearance_resize(result, (self.cursor_x+1, len(result)))
+        cursor_line = result[self.cursor_y]
+        result[self.cursor_y] = (cursor_line[:self.cursor_x] +
+                                 termstr.TermStr(cursor_line[self.cursor_x]).invert() +
+                                 cursor_line[self.cursor_x+1:])
+        return result
+
     def set_text(self, text):
         try:
             self.text_widget = Code(text, self.path)
         except pygments.util.ClassNotFound:  # No lexer for path
             self.text_widget = Text(text)
         self.decor_widget = Decor(self.text_widget,
-                                  lambda appearance: add_highlights(self, appearance))
+                                  lambda appearance: self.add_highlights(appearance))
         self.view_widget = fill3.View.from_widget(self.decor_widget)
         self.view_widget.portal.is_scroll_limited = True
         if not self.is_left_aligned:
