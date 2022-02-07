@@ -245,19 +245,15 @@ class Editor:
         self.cursor_x, self.cursor_y = 0, 0
         self.original_text = self.text_widget.actual_text.copy()
 
-    def prefix(self):
-        pass
-
     def load(self, path):
         self.path = os.path.normpath(path)
         with open(path) as file_:
             self.set_text(file_.read())
 
     def save(self):
-        if self.previous_term_code == terminal.CTRL_X:
-            with open(self.path, "w") as file_:
-                file_.write(self.text_widget.get_text())
-            self.original_text = self.text_widget.actual_text.copy()
+        with open(self.path, "w") as file_:
+            file_.write(self.text_widget.get_text())
+        self.original_text = self.text_widget.actual_text.copy()
 
     def backspace(self):
         if self.cursor_x == 0:
@@ -524,10 +520,6 @@ class Editor:
     def quit(self):
         fill3.SHUTDOWN_EVENT.set()
 
-    def ctrl_c(self):
-        if self.previous_term_code == terminal.CTRL_X:
-            self.quit()
-
     def ring_bell(self):
         if "unittest" not in sys.modules:
             print("\a", end="")
@@ -570,18 +562,6 @@ class Editor:
                 continue
             self.text_widget[line_num] = self.text_widget[line_num][Editor.TAB_SIZE:]
 
-    def greater_than_key(self):
-        if self.previous_term_code == terminal.CTRL_C:
-            self.indent()
-        else:
-            self.insert_text(">", is_overwriting=self.is_overwriting)
-
-    def less_than_key(self):
-        if self.previous_term_code == terminal.CTRL_C:
-            self.dedent()
-        else:
-            self.insert_text("<", is_overwriting=self.is_overwriting)
-
     def abort_command(self):
         self.mark = None
         self.ring_bell()
@@ -613,9 +593,10 @@ class Editor:
     def on_keyboard_input(self, term_code):
         if term_code not in [terminal.CTRL_UNDERSCORE, terminal.CTRL_Z]:
             self.add_to_history()
-        if term_code in Editor.KEY_MAP:
+        if action := (Editor.KEY_MAP.get(term_code)
+                      or Editor.KEY_MAP.get((self.previous_term_code, term_code))):
             try:
-                Editor.KEY_MAP[term_code](self)
+                action(self)
             except IndexError:
                 self.ring_bell()
         elif term_code in self._PRINTABLE:
@@ -673,27 +654,29 @@ class Editor:
         return result
 
     KEY_MAP = {
-        terminal.CTRL_S: save, terminal.BACKSPACE: backspace, terminal.LEFT: cursor_left,
-        terminal.CTRL_B: cursor_left, terminal.RIGHT: cursor_right, terminal.CTRL_F: cursor_right,
-        terminal.UP: cursor_up, terminal.CTRL_P: cursor_up, terminal.DOWN: cursor_down,
-        terminal.CTRL_N: cursor_down, terminal.CTRL_A: jump_to_start_of_line,
-        terminal.CTRL_E: jump_to_end_of_line, terminal.CTRL_O: open_line, terminal.ENTER: enter,
-        terminal.CTRL_SPACE: set_mark, terminal.CTRL_G: drop_highlight,
-        terminal.PAGE_DOWN: page_down, terminal.CTRL_V: page_down, terminal.PAGE_UP: page_up,
-        terminal.ALT_v: page_up, terminal.ALT_w: copy_selection, terminal.CTRL_W: delete_selection,
-        terminal.CTRL_D: delete_character, terminal.DELETE: delete_character,
-        terminal.ALT_d: delete_right, terminal.CTRL_Y: paste_from_clipboard,
-        terminal.CTRL_UP: jump_to_block_start, terminal.CTRL_DOWN: jump_to_block_end,
-        terminal.ALT_f: next_word, terminal.CTRL_RIGHT: next_word, terminal.ALT_RIGHT: next_word,
+        (terminal.CTRL_X, terminal.CTRL_S): save, terminal.BACKSPACE: backspace,
+        terminal.LEFT: cursor_left, terminal.CTRL_B: cursor_left, terminal.RIGHT: cursor_right,
+        terminal.CTRL_F: cursor_right, terminal.UP: cursor_up, terminal.CTRL_P: cursor_up,
+        terminal.DOWN: cursor_down, terminal.CTRL_N: cursor_down,
+        terminal.CTRL_A: jump_to_start_of_line, terminal.CTRL_E: jump_to_end_of_line,
+        terminal.CTRL_O: open_line, terminal.ENTER: enter, terminal.CTRL_SPACE: set_mark,
+        terminal.CTRL_G: drop_highlight, terminal.PAGE_DOWN: page_down, terminal.CTRL_V: page_down,
+        terminal.PAGE_UP: page_up, terminal.ALT_v: page_up, terminal.ALT_w: copy_selection,
+        terminal.CTRL_W: delete_selection, terminal.CTRL_D: delete_character,
+        terminal.DELETE: delete_character, terminal.ALT_d: delete_right,
+        terminal.CTRL_Y: paste_from_clipboard, terminal.CTRL_UP: jump_to_block_start,
+        terminal.CTRL_DOWN: jump_to_block_end, terminal.ALT_f: next_word,
+        terminal.CTRL_RIGHT: next_word, terminal.ALT_RIGHT: next_word,
         terminal.ALT_b: previous_word, terminal.CTRL_LEFT: previous_word,
         terminal.ALT_LEFT: previous_word, terminal.ALT_BACKSPACE: delete_backward,
         terminal.ALT_CARROT: join_lines, terminal.ALT_h: highlight_block,
         terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
-        terminal.ALT_c: cycle_syntax_highlighting, terminal.CTRL_X: prefix, terminal.ESC: quit,
-        terminal.CTRL_C: ctrl_c, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
+        terminal.ALT_c: cycle_syntax_highlighting, (terminal.CTRL_X, terminal.CTRL_C): quit,
+        terminal.ESC: quit, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
         terminal.CTRL_UNDERSCORE: undo, terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command,
-        terminal.INSERT: toggle_overwrite, ">": greater_than_key, "<": less_than_key}
+        terminal.INSERT: toggle_overwrite, (terminal.CTRL_C, ">"): indent,
+        (terminal.CTRL_C, "<"): dedent}
 
 
 def main():
