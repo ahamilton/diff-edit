@@ -4,7 +4,6 @@ Todo:
 - Colourise file name.
 - Search.
 - Search and replace.
-- Large pastes.
 
 
 Done:
@@ -31,6 +30,7 @@ Done:
 - Right align the left editor.
 - Overwrite mode.
 - Bulk indent/dedent.
+- Large pastes.
 
 
 Shelved:

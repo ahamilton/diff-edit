@@ -1,6 +1,4 @@
 Current:
-- Input can be lost when typing quickly and diff-edit is busy.
-  Seen with rapid undo while diffing.
 - Error sometimes when paging to the bottom of the file.
 
 
@@ -8,6 +6,8 @@ Fixed:
 - Interface freezing often.
 - Fix scrolling.
 - When largest line grows the bounding box should grow.
+- Input can be lost when typing quickly and diff-edit is busy.
+  Seen with rapid undo while diffing.
 
 
 Won't fix:
