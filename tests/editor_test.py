@@ -47,6 +47,22 @@ class TextWidgetTestCase(unittest.TestCase):
         text = editor.Text("a\nbb\nc\nd")
         self.assertEqual(len(text), 4)
 
+    def test_tabs(self):
+        text = editor.Text("a\tb\naa\tb")
+        self.assertEqual(text.get_text(), "a\tb\naa\tb")
+        self.assertEqual(text.appearance(), ["a       b", "aa      b"])
+        text = editor.Text("a\tb\tc")
+        self.assertEqual(text.appearance(), ["a       b       c"])
+
+    def test_expandtabs_inverse(self):
+        self.assertEqual(editor.expandtabs_inverse(""), [])
+        self.assertEqual(editor.expandtabs_inverse("a"), [0])
+        self.assertEqual(editor.expandtabs_inverse("a\tb"), [0, 1, 1, 1, 1, 1, 1, 1, 2])
+        self.assertEqual(editor.expandtabs_inverse("aaaaaaaaaa\t"),
+                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 10, 10])
+        self.assertEqual(editor.expandtabs_inverse("a\tb\tc"),
+                         [0, 1, 1, 1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 3, 3, 4])
+
 
 class EditorTestCase(unittest.TestCase):
 

@@ -85,14 +85,15 @@ class Text:
             self._replace_lines(key, value)
 
     def _replace_lines(self, slice_, new_lines):
-        max_new_lengths = max(len(line) for line in new_lines)
+        fixed_lines = [line.expandtabs() for line in new_lines]
+        max_new_lengths = max(len(line) for line in fixed_lines)
         if max_new_lengths > self.max_line_length:
             padding = self.padding_char * (max_new_lengths - self.max_line_length)
             self.text = [line + padding for line in self.text]
             self.max_line_length = max_new_lengths
-        converted_lines = [self._convert_line(line, self.max_line_length) for line in new_lines]
+        converted_lines = [self._convert_line(line, self.max_line_length) for line in fixed_lines]
         self.text[slice_], self.actual_text[slice_] = converted_lines, new_lines
-        new_max_line_length = max(len(line) for line in self.actual_text)
+        new_max_line_length = max(len(line.expandtabs()) for line in self.actual_text)
         if new_max_line_length < self.max_line_length:
             clip_width = self.max_line_length - new_max_line_length
             self.text = [line[:-clip_width] for line in self.text]
@@ -152,6 +153,19 @@ class Decor:
 def highlight_part(line, start, end):
     return (line[:start] + highlight_str(line[start:end], termstr.Color.white, transparency=0.7) +
             line[end:])
+
+
+@functools.lru_cache(maxsize=100)
+def expandtabs_inverse(s):
+    parts_len = [len(part) for part in s.split("\t")]
+    result = list(range(parts_len[0]))
+    cursor = parts_len[0]
+    for part_len in parts_len[1:]:
+        result.extend([cursor] * (8 - (len(result) % 8)))
+        cursor += 1
+        result.extend(range(cursor, cursor + part_len))
+        cursor += part_len
+    return result
 
 
 class Editor:
@@ -215,20 +229,23 @@ class Editor:
             result[self.cursor_y] = highlight_str(result[self.cursor_y], termstr.Color.white, 0.8)
         else:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
+            screen_start_x = len(self.text_widget[start_y][:start_x].expandtabs())
+            screen_end_x = len(self.text_widget[end_y][:end_x].expandtabs())
             if start_y == end_y:
-                result[start_y] = highlight_part(result[start_y], start_x, end_x)
+                result[start_y] = highlight_part(result[start_y], screen_start_x, screen_end_x)
             else:
-                result[start_y] = highlight_part(result[start_y], start_x, len(result[start_y]))
+                result[start_y] = highlight_part(result[start_y], screen_start_x, len(result[start_y]))
                 view_x, view_y = self.view_widget.position
-                for line_num in range(max(start_y+1, view_y), min(end_y, view_y+self.last_height)):
+                for line_num in range(max(start_y+1, view_y), min(end_y, view_y + self.last_height)):
                     result[line_num] = highlight_part(result[line_num], 0, len(result[line_num]))
-                result[end_y] = highlight_part(result[end_y], 0, end_x)
+                result[end_y] = highlight_part(result[end_y], 0, screen_end_x)
         if self.cursor_x >= len(result[0]):
             result = fill3.appearance_resize(result, (self.cursor_x+1, len(result)))
         cursor_line = result[self.cursor_y]
-        result[self.cursor_y] = (cursor_line[:self.cursor_x] +
-                                 termstr.TermStr(cursor_line[self.cursor_x]).invert() +
-                                 cursor_line[self.cursor_x+1:])
+        screen_x = len(self.text_widget[self.cursor_y][:self.cursor_x].expandtabs())
+        result[self.cursor_y] = (cursor_line[:screen_x] +
+                                 termstr.TermStr(cursor_line[screen_x]).invert() +
+                                 cursor_line[screen_x+1:])
         return result
 
     def set_text(self, text):
@@ -418,7 +435,7 @@ class Editor:
             return 0
         self.jump_to_start_of_line()
         self.cursor_up()
-        while self._current_character() == " ":
+        while self._current_character() in [" ", "\t"]:
             self.cursor_right()
         return self.cursor_x
 
@@ -429,10 +446,13 @@ class Editor:
         self.cursor_down()
         self.jump_to_start_of_line()
         self.set_mark()
-        while self._current_character() == " ":
+        while self._current_character() in [" ", "\t"]:
             self.cursor_right()
         self.delete_selection()
         self.insert_text(" " * indent)
+
+    def insert_tab(self):
+        self.insert_text("\t")
 
     def _line_indent(self, y):
         line = self.text_widget[y]
@@ -579,13 +599,12 @@ class Editor:
             new_y = self.cursor_y - height // 2
         else:
             new_y = view_y
-        if self.cursor_x >= view_x + width or self.cursor_x < view_x:
-            new_x = self.cursor_x - width // 2
+        screen_x = len(self.text_widget[self.cursor_y][:self.cursor_x].expandtabs())
+        if screen_x >= view_x + width or screen_x < view_x:
+            new_x = screen_x - width // 2
         else:
             new_x = view_x
         self.view_widget.position = max(0, new_x), max(0, new_y)
-
-    _PRINTABLE = string.printable[:-5]
 
     def add_to_history(self):
         self.history.append((self.text_widget.actual_text.copy(), self._cursor_x, self._cursor_y))
@@ -593,16 +612,16 @@ class Editor:
     def on_keyboard_input(self, term_code):
         if term_code not in [terminal.CTRL_UNDERSCORE, terminal.CTRL_Z]:
             self.add_to_history()
-        if action := (Editor.KEY_MAP.get(term_code)
-                      or Editor.KEY_MAP.get((self.previous_term_code, term_code))):
+        if action := (Editor.KEY_MAP.get((self.previous_term_code, term_code))
+                      or Editor.KEY_MAP.get(term_code)):
             try:
                 action(self)
             except IndexError:
                 self.ring_bell()
-        elif term_code in self._PRINTABLE:
-            self.insert_text(term_code, is_overwriting=self.is_overwriting)
+        elif len(term_code) == 1 and ord(term_code) < 32:
+            pass
         else:
-            self.insert_text(repr(term_code))
+            self.insert_text(term_code, is_overwriting=self.is_overwriting)
         self.previous_term_code = term_code
         self.follow_cursor()
         fill3.APPEARANCE_CHANGED_EVENT.set()
@@ -613,8 +632,11 @@ class Editor:
 
     def on_mouse_press(self, x, y):
         view_x, view_y = self.view_widget.position
-        self.cursor_x = x + view_x
         self.cursor_y = min(y + view_y - 1, len(self.text_widget) - 1)
+        try:
+            self.cursor_x = expandtabs_inverse(self.text_widget[self.cursor_y])[x + view_x]
+        except IndexError:
+            self.cursor_x = expandtabs_inverse(self.text_widget[self.cursor_y])[-1]
         self.last_mouse_position = (x, y)
 
     def on_mouse_drag(self, x, y):
@@ -674,9 +696,9 @@ class Editor:
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, (terminal.CTRL_X, terminal.CTRL_C): quit,
         terminal.ESC: quit, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
-        terminal.CTRL_UNDERSCORE: undo, terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command,
-        terminal.INSERT: toggle_overwrite, (terminal.CTRL_C, ">"): indent,
-        (terminal.CTRL_C, "<"): dedent}
+        (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: undo,
+        terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command, terminal.INSERT: toggle_overwrite,
+        (terminal.CTRL_C, ">"): indent, (terminal.CTRL_C, "<"): dedent}
 
 
 def main():

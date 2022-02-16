@@ -1,6 +1,5 @@
 Todo:
 - Keyboard shortcuts for resolving differences.
-- How to handle tabs?
 - Colourise file name.
 - Search.
 - Search and replace.
@@ -31,6 +30,7 @@ Done:
 - Overwrite mode.
 - Bulk indent/dedent.
 - Large pastes.
+- tabs.
 
 
 Shelved:
