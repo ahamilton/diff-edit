@@ -3,6 +3,8 @@
 
 import unittest
 
+import termstr
+
 import diff_edit.editor as editor
 
 
@@ -50,18 +52,21 @@ class TextWidgetTestCase(unittest.TestCase):
     def test_tabs(self):
         text = editor.Text("a\tb\naa\tb")
         self.assertEqual(text.get_text(), "a\tb\naa\tb")
-        self.assertEqual(text.appearance(), ["a       b", "aa      b"])
+        self.assertEqual(text.appearance(),
+                         [termstr.TermStr("a       b"), termstr.TermStr("aa      b")])
         text = editor.Text("a\tb\tc")
-        self.assertEqual(text.appearance(), ["a       b       c"])
+        self.assertEqual(text.appearance(), [termstr.TermStr("a       b       c")])
 
-    def test_expandtabs_inverse(self):
-        self.assertEqual(editor.expandtabs_inverse(""), [])
-        self.assertEqual(editor.expandtabs_inverse("a"), [0])
-        self.assertEqual(editor.expandtabs_inverse("a\tb"), [0, 1, 1, 1, 1, 1, 1, 1, 2])
-        self.assertEqual(editor.expandtabs_inverse("aaaaaaaaaa\t"),
+    def test_expand_str_inverse(self):
+        self.assertEqual(editor.expand_str_inverse(""), [])
+        self.assertEqual(editor.expand_str_inverse("a"), [0])
+        self.assertEqual(editor.expand_str_inverse("a\tb"), [0, 1, 1, 1, 1, 1, 1, 1, 2])
+        self.assertEqual(editor.expand_str_inverse("aaaaaaaaaa\t"),
                          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 10, 10])
-        self.assertEqual(editor.expandtabs_inverse("a\tb\tc"),
+        self.assertEqual(editor.expand_str_inverse("a\tb\tc"),
                          [0, 1, 1, 1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 3, 3, 4])
+        self.assertEqual(editor.expand_str_inverse("♓"), [0, 0])
+        self.assertEqual(editor.expand_str_inverse("♓\tb"), [0, 0, 1, 1, 1, 1, 1, 1, 2])
 
 
 class EditorTestCase(unittest.TestCase):
@@ -77,7 +82,7 @@ class EditorTestCase(unittest.TestCase):
 
     def _set_editor(self, text, cursor_position):
         self.editor.set_text(text)
-        self.editor.cursor_x, self.editor.cursor_y = cursor_position
+        self.editor._cursor_x, self.editor._cursor_y = cursor_position
 
     def _assert_change(self, method, expected_text, expected_cursor_position):
         method()
@@ -183,6 +188,11 @@ class EditorTestCase(unittest.TestCase):
         self._assert_change(self.editor.cursor_down, text, (2, 1))
         self._assert_change(self.editor.jump_to_start_of_line, text, (0, 1))
         self._assert_change(self.editor.jump_to_end_of_line, text, (2, 1))
+        text = ("♓\n"
+                "bc")
+        self._set_editor(text, (0, 0))
+        self._assert_change(self.editor.cursor_right, text, (1, 0))
+        self._assert_change(self.editor.cursor_down, text, (2, 1))
 
     def test_jumping_words(self):
         text = ("ab .dj\n"

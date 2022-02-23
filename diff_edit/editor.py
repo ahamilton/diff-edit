@@ -16,6 +16,8 @@ import pygments.lexers
 import pygments.styles
 import termstr
 
+import cwcwidth
+
 
 @functools.lru_cache(maxsize=100)
 def highlight_str(line, bg_color, transparency=0.6):
@@ -59,6 +61,12 @@ def _syntax_highlight(text, lexer, style):
     return fill3.join("\n", text_widget.text)
 
 
+@functools.lru_cache(maxsize=500)
+def expand_str(str_):
+    expanded_str = termstr.TermStr(str_)
+    return str_ if expanded_str.data == str_ else expanded_str
+
+
 class Text:
 
     def __init__(self, text, padding_char=" "):
@@ -85,7 +93,7 @@ class Text:
             self._replace_lines(key, value)
 
     def _replace_lines(self, slice_, new_lines):
-        fixed_lines = [line.expandtabs() for line in new_lines]
+        fixed_lines = [expand_str(line) for line in new_lines]
         max_new_lengths = max(len(line) for line in fixed_lines)
         if max_new_lengths > self.max_line_length:
             padding = self.padding_char * (max_new_lengths - self.max_line_length)
@@ -93,7 +101,7 @@ class Text:
             self.max_line_length = max_new_lengths
         converted_lines = [self._convert_line(line, self.max_line_length) for line in fixed_lines]
         self.text[slice_], self.actual_text[slice_] = converted_lines, new_lines
-        new_max_line_length = max(len(line.expandtabs()) for line in self.actual_text)
+        new_max_line_length = max(len(expand_str(line)) for line in self.actual_text)
         if new_max_line_length < self.max_line_length:
             clip_width = self.max_line_length - new_max_line_length
             self.text = [line[:-clip_width] for line in self.text]
@@ -155,16 +163,12 @@ def highlight_part(line, start, end):
             line[end:])
 
 
-@functools.lru_cache(maxsize=100)
-def expandtabs_inverse(s):
-    parts_len = [len(part) for part in s.split("\t")]
-    result = list(range(parts_len[0]))
-    cursor = parts_len[0]
-    for part_len in parts_len[1:]:
-        result.extend([cursor] * (8 - (len(result) % 8)))
-        cursor += 1
-        result.extend(range(cursor, cursor + part_len))
-        cursor += part_len
+@functools.lru_cache(maxsize=500)
+def expand_str_inverse(str_):
+    result = []
+    for index, char in enumerate(str_):
+        run_length = 8 - len(result) % 8 if char == "\t" else cwcwidth.wcwidth(char)
+        result.extend([index] * run_length)
     return result
 
 
@@ -190,12 +194,17 @@ class Editor:
 
     @property
     def cursor_x(self):
-        line_length = len(self.text_widget.actual_text[self.cursor_y])
-        return min(self._cursor_x, line_length)
+        try:
+            return expand_str_inverse(self.text_widget[self.cursor_y])[self._cursor_x]
+        except IndexError:
+            return len(self.text_widget.actual_text[self.cursor_y])
 
     @cursor_x.setter
     def cursor_x(self, x):
-        self._cursor_x = x
+        try:
+            self._cursor_x = len(expand_str(self.text_widget[self.cursor_y][:x]))
+        except IndexError:
+            self._cursor_x = x
 
     @property
     def cursor_y(self):
@@ -229,8 +238,8 @@ class Editor:
             result[self.cursor_y] = highlight_str(result[self.cursor_y], termstr.Color.white, 0.8)
         else:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
-            screen_start_x = len(self.text_widget[start_y][:start_x].expandtabs())
-            screen_end_x = len(self.text_widget[end_y][:end_x].expandtabs())
+            screen_start_x = len(expand_str(self.text_widget[start_y][:start_x]))
+            screen_end_x = len(expand_str(self.text_widget[end_y][:end_x]))
             if start_y == end_y:
                 result[start_y] = highlight_part(result[start_y], screen_start_x, screen_end_x)
             else:
@@ -242,10 +251,12 @@ class Editor:
         if self.cursor_x >= len(result[0]):
             result = fill3.appearance_resize(result, (self.cursor_x+1, len(result)))
         cursor_line = result[self.cursor_y]
-        screen_x = len(self.text_widget[self.cursor_y][:self.cursor_x].expandtabs())
+        screen_x = len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x]))
+        screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"]
+                          else len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x+1])))
         result[self.cursor_y] = (cursor_line[:screen_x] +
-                                 termstr.TermStr(cursor_line[screen_x]).invert() +
-                                 cursor_line[screen_x+1:])
+                                 termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
+                                 cursor_line[screen_x_after:])
         return result
 
     def set_text(self, text):
@@ -259,7 +270,7 @@ class Editor:
         self.view_widget.portal.is_scroll_limited = True
         if not self.is_left_aligned:
             self.view_widget.portal.is_left_aligned = False
-        self.cursor_x, self.cursor_y = 0, 0
+        self._cursor_x, self._cursor_y = 0, 0
         self.original_text = self.text_widget.actual_text.copy()
 
     def load(self, path):
@@ -482,7 +493,7 @@ class Editor:
                 new_line = (self.text_widget[start_y][:start_x] + "# " +
                             self.text_widget[start_y][start_x:])
                 self.text_widget[start_y] = new_line
-                self.cursor_x = len(new_line)
+                self._cursor_x = len(new_line)
                 start_y += 1
             if end_x != 0:
                 end_y += 1
@@ -599,7 +610,7 @@ class Editor:
             new_y = self.cursor_y - height // 2
         else:
             new_y = view_y
-        screen_x = len(self.text_widget[self.cursor_y][:self.cursor_x].expandtabs())
+        screen_x = len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x]))
         if screen_x >= view_x + width or screen_x < view_x:
             new_x = screen_x - width // 2
         else:
@@ -633,10 +644,7 @@ class Editor:
     def on_mouse_press(self, x, y):
         view_x, view_y = self.view_widget.position
         self.cursor_y = min(y + view_y - 1, len(self.text_widget) - 1)
-        try:
-            self.cursor_x = expandtabs_inverse(self.text_widget[self.cursor_y])[x + view_x]
-        except IndexError:
-            self.cursor_x = expandtabs_inverse(self.text_widget[self.cursor_y])[-1]
+        self._cursor_x = x + view_x
         self.last_mouse_position = (x, y)
 
     def on_mouse_drag(self, x, y):
