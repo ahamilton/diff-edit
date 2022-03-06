@@ -69,6 +69,16 @@ class TextWidgetTestCase(unittest.TestCase):
         self.assertEqual(editor.expand_str_inverse("♓\tb"), [0, 0, 1, 1, 1, 1, 1, 1, 2])
 
 
+class ExpandTabsTestCase(unittest.TestCase):
+
+    def test_expand_tabs(self):
+        self.assertEqual(editor.expandtabs(""), "")
+        self.assertEqual(editor.expandtabs("a"), "a")
+        self.assertEqual(editor.expandtabs("a\tb"), "a       b")
+        self.assertEqual(editor.expandtabs("a♓\tb"), "a♓     b")
+        self.assertEqual(editor.expandtabs("c\na♓\tb"), "c\na♓     b")
+
+
 class EditorTestCase(unittest.TestCase):
 
     def setUp(self):

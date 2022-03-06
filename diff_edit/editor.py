@@ -54,6 +54,7 @@ def _syntax_highlight(text, lexer, style):
                                  token_style["underline"])
     default_bg_color = _parse_rgb(style.background_color)
     default_style = termstr.CharStyle(bg_color=default_bg_color)
+    text = expandtabs(text)
     text = fill3.join("", [termstr.TermStr(
         text, _char_style_for_token_type(token_type, default_bg_color, default_style))
                            for token_type, text in pygments.lex(text, lexer)])
@@ -84,7 +85,7 @@ class Text:
         return self.actual_text[line_index]
 
     def _convert_line(self, line, max_line_length):
-        return line.ljust(max_line_length)
+        return expand_str(line).ljust(max_line_length)
 
     def __setitem__(self, key, value):
         if type(key) == int:
@@ -99,7 +100,7 @@ class Text:
             padding = self.padding_char * (max_new_lengths - self.max_line_length)
             self.text = [line + padding for line in self.text]
             self.max_line_length = max_new_lengths
-        converted_lines = [self._convert_line(line, self.max_line_length) for line in fixed_lines]
+        converted_lines = [self._convert_line(line, self.max_line_length) for line in new_lines]
         self.text[slice_], self.actual_text[slice_] = converted_lines, new_lines
         new_max_line_length = max(len(expand_str(line)) for line in self.actual_text)
         if new_max_line_length < self.max_line_length:
@@ -132,8 +133,9 @@ class Code(Text):
         Text.__init__(self, text, padding_char)
 
     def _convert_line(self, line, max_line_length):
-        return (termstr.TermStr(line.ljust(max_line_length)) if self.theme is None
-                else _syntax_highlight(line.ljust(max_line_length), self.lexer, self.theme))
+        highlighted_line = (termstr.TermStr(line) if self.theme is None
+                            else _syntax_highlight(line, self.lexer, self.theme))
+        return highlighted_line.ljust(max_line_length, fillchar=self.padding_char)
 
     def syntax_highlight_all(self):
         if self.theme is None:
@@ -161,6 +163,23 @@ class Decor:
 def highlight_part(line, start, end):
     return (line[:start] + highlight_str(line[start:end], termstr.Color.white, transparency=0.7) +
             line[end:])
+
+
+@functools.lru_cache(maxsize=500)
+def expandtabs(text):
+    result = []
+    for line in text.splitlines(keepends=True):
+        parts = line.split("\t")
+        if len(parts) == 1:
+            result.append(line)
+            continue
+        result.append(parts[0])
+        line_length = cwcwidth.wcswidth(parts[0])
+        for part in parts[1:]:
+            spacing = 8 - line_length % 8
+            result.extend([" " * spacing, part])
+            line_length += spacing + cwcwidth.wcswidth(part)
+    return "".join(result)
 
 
 @functools.lru_cache(maxsize=500)
