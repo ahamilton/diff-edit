@@ -84,6 +84,7 @@ class Text:
     def __getitem__(self, line_index):
         return self.actual_text[line_index]
 
+    @functools.lru_cache(maxsize=1000)
     def _convert_line(self, line, max_line_length):
         return expand_str(line).ljust(max_line_length)
 
@@ -102,6 +103,8 @@ class Text:
             self.max_line_length = max_new_lengths
         converted_lines = [self._convert_line(line, self.max_line_length) for line in new_lines]
         self.text[slice_], self.actual_text[slice_] = converted_lines, new_lines
+        if max_new_lengths < self.max_line_length:
+            return
         new_max_line_length = max(len(expand_str(line)) for line in self.actual_text)
         if new_max_line_length < self.max_line_length:
             clip_width = self.max_line_length - new_max_line_length
@@ -132,6 +135,7 @@ class Code(Text):
         padding_char = _syntax_highlight(" ", self.lexer, theme)
         Text.__init__(self, text, padding_char)
 
+    @functools.lru_cache(maxsize=1000)
     def _convert_line(self, line, max_line_length):
         highlighted_line = (termstr.TermStr(line) if self.theme is None
                             else _syntax_highlight(line, self.lexer, self.theme))
