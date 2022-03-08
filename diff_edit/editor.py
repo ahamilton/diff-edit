@@ -103,8 +103,6 @@ class Text:
             self.max_line_length = max_new_lengths
         converted_lines = [self._convert_line(line, self.max_line_length) for line in new_lines]
         self.text[slice_], self.actual_text[slice_] = converted_lines, new_lines
-        if max_new_lengths < self.max_line_length:
-            return
         new_max_line_length = max(len(expand_str(line)) for line in self.actual_text)
         if new_max_line_length < self.max_line_length:
             clip_width = self.max_line_length - new_max_line_length
