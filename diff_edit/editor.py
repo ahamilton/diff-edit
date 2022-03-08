@@ -658,7 +658,7 @@ class Editor:
 
     def scroll(self, dx, dy):
         view_x, view_y = self.scroll_position
-        self.scroll_position = view_x + dx, view_y + dy
+        self.scroll_position = max(0, view_x + dx), max(0, view_y + dy)
 
     def on_mouse_press(self, x, y):
         view_x, view_y = self.view_widget.position

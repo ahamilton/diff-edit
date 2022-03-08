@@ -182,15 +182,14 @@ class DiffEditor:
             if left_start <= y < left_end:
                 fraction = (y - left_start) / (left_end - left_start)
                 return round(right_start + fraction * (right_end - right_start))
+        return 0
 
     def follow_scroll(self):
         x, y = self.editors[0].scroll_position
         last_width, last_height = self.last_dimensions
         middle_y = last_height // 2
         new_y = self._equivalent_line(y + middle_y)
-        if new_y is None:
-            new_y = 0
-        self.editors[1].scroll_position = max(0, x), new_y - middle_y
+        self.editors[1].scroll_position = max(0, x), max(0, new_y - middle_y)
 
     def switch_editor(self):
         self.editors[1].cursor_x = self.editors[0].cursor_x
