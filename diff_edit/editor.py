@@ -62,7 +62,7 @@ def _syntax_highlight(text, lexer, style):
     return fill3.join("\n", text_widget.text)
 
 
-@functools.lru_cache(maxsize=500)
+@functools.lru_cache(maxsize=5000)
 def expand_str(str_):
     expanded_str = termstr.TermStr(str_)
     return str_ if expanded_str.data == str_ else expanded_str
@@ -72,19 +72,20 @@ class Text:
 
     def __init__(self, text, padding_char=" "):
         self.padding_char = padding_char
-        self.text, self.actual_text, self.max_line_length = [], [], 0
+        self.actual_text = []
+        self.max_line_length = None
         lines = [""] if text == "" else text.splitlines()
         if text.endswith("\n"):
             lines.append("")
         self[:] = lines
 
     def __len__(self):
-        return len(self.text)
+        return len(self.actual_text)
 
     def __getitem__(self, line_index):
         return self.actual_text[line_index]
 
-    @functools.lru_cache(maxsize=1000)
+    @functools.lru_cache(maxsize=5000)
     def _convert_line(self, line, max_line_length):
         return expand_str(line).ljust(max_line_length)
 
@@ -94,35 +95,34 @@ class Text:
         else:  # slice
             self._replace_lines(key, value)
 
+    @functools.cached_property
+    def max_line_length(self):
+        return max(len(expand_str(line)) for line in self.actual_text)
+
     def _replace_lines(self, slice_, new_lines):
-        fixed_lines = [expand_str(line) for line in new_lines]
-        max_new_lengths = max(len(line) for line in fixed_lines)
-        if max_new_lengths > self.max_line_length:
-            padding = self.padding_char * (max_new_lengths - self.max_line_length)
-            self.text = [line + padding for line in self.text]
-            self.max_line_length = max_new_lengths
-        converted_lines = [self._convert_line(line, self.max_line_length) for line in new_lines]
-        self.text[slice_], self.actual_text[slice_] = converted_lines, new_lines
-        new_max_line_length = max(len(expand_str(line)) for line in self.actual_text)
-        if new_max_line_length < self.max_line_length:
-            clip_width = self.max_line_length - new_max_line_length
-            self.text = [line[:-clip_width] for line in self.text]
-            self.max_line_length = new_max_line_length
+        self.actual_text[slice_] = new_lines
+        with contextlib.suppress(AttributeError):
+            del self.max_line_length
 
     def insert(self, index, line):
         self._replace_lines(slice(index, index), [line])
 
     def append(self, line):
-        self.insert(len(self.text), line)
+        self.insert(len(self.actual_text), line)
 
     def get_text(self):
         return "\n".join(self)
 
     def appearance(self):
-        return self.text
+        return [self._convert_line(line, self.max_line_length) for line in self.actual_text]
 
-    def appearance_for(self, dimensions):
-        return fill3.appearance_resize(self.appearance(), dimensions)
+    def appearance_dimensions(self):
+        return (self.max_line_length, len(self.actual_text))
+
+    def appearance_interval(self, interval):
+        start_y, end_y = interval
+        return [self._convert_line(line, self.max_line_length)
+                for line in self.actual_text[start_y:end_y]]
 
 
 class Code(Text):
@@ -130,23 +130,23 @@ class Code(Text):
     def __init__(self, text, path, theme=NATIVE_STYLE):
         self.lexer = pygments.lexers.get_lexer_for_filename(path, text, stripnl=False)
         self.theme = theme
-        padding_char = _syntax_highlight(" ", self.lexer, theme)
+        padding_char = None
         Text.__init__(self, text, padding_char)
 
-    @functools.lru_cache(maxsize=1000)
-    def _convert_line(self, line, max_line_length):
-        highlighted_line = (termstr.TermStr(line) if self.theme is None
-                            else _syntax_highlight(line, self.lexer, self.theme))
+    @functools.lru_cache(maxsize=5000)
+    def _convert_line_themed(self, line, max_line_length, theme):
+        if self.padding_char is None:
+            self.padding_char = (" " if self.theme is None
+                                 else _syntax_highlight(" ", self.lexer, self.theme))
+        highlighted_line = (termstr.TermStr(line) if theme is None
+                            else _syntax_highlight(line, self.lexer, theme))
         return highlighted_line.ljust(max_line_length, fillchar=self.padding_char)
 
+    def _convert_line(self, line, max_line_length):
+        return self._convert_line_themed(line, max_line_length, self.theme)
+
     def syntax_highlight_all(self):
-        if self.theme is None:
-            self.text = [termstr.TermStr(line.ljust(self.max_line_length))
-                         for line in self.get_text().splitlines()]
-        else:
-            self.padding_char = _syntax_highlight(" ", self.lexer, self.theme)
-            highlighted = _syntax_highlight(self.get_text(), self.lexer, self.theme)
-            self.text = [line.ljust(self.max_line_length) for line in highlighted.splitlines()]
+        self.padding_char = None
 
 
 class Decor:
@@ -161,13 +161,19 @@ class Decor:
     def appearance(self):
         return self.decorator(self.widget.appearance())
 
+    def appearance_interval(self, interval):
+        return self.decorator(self.widget.appearance_interval(interval))
+
+    def appearance_dimensions(self):
+        return self.widget.appearance_dimensions()
+
 
 def highlight_part(line, start, end):
     return (line[:start] + highlight_str(line[start:end], termstr.Color.white, transparency=0.7) +
             line[end:])
 
 
-@functools.lru_cache(maxsize=500)
+@functools.lru_cache(maxsize=5000)
 def expandtabs(text):
     result = []
     for line in text.splitlines(keepends=True):
@@ -184,7 +190,7 @@ def expandtabs(text):
     return "".join(result)
 
 
-@functools.lru_cache(maxsize=500)
+@functools.lru_cache(maxsize=5000)
 def expand_str_inverse(str_):
     result = []
     for index, char in enumerate(str_):
@@ -252,32 +258,39 @@ class Editor:
         return (start_x, start_y), (end_x, end_y)
 
     def add_highlights(self, appearance):
-        result = appearance.copy()
+        view_x, view_y = self.view_widget.position
+        result = appearance
         if not self.is_editing:
             return result
         if self.mark is None:
-            result[self.cursor_y] = highlight_str(result[self.cursor_y], termstr.Color.white, 0.8)
+            result[self.cursor_y - view_y] = highlight_str(result[self.cursor_y - view_y],
+                                                           termstr.Color.white, 0.8)
         else:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
             screen_start_x = len(expand_str(self.text_widget[start_y][:start_x]))
             screen_end_x = len(expand_str(self.text_widget[end_y][:end_x]))
+            start_y -= view_y
+            end_y -= view_y
             if start_y == end_y:
                 result[start_y] = highlight_part(result[start_y], screen_start_x, screen_end_x)
             else:
-                result[start_y] = highlight_part(result[start_y], screen_start_x, len(result[start_y]))
+                if 0 <= start_y < len(result):
+                    result[start_y] = highlight_part(result[start_y], screen_start_x, len(result[start_y]))
                 view_x, view_y = self.view_widget.position
-                for line_num in range(max(start_y+1, view_y), min(end_y, view_y + self.last_height)):
-                    result[line_num] = highlight_part(result[line_num], 0, len(result[line_num]))
-                result[end_y] = highlight_part(result[end_y], 0, screen_end_x)
+                for line_num in range(max(start_y+1, 0), min(end_y, self.last_height)):
+                    if 0 <= line_num < len(result):
+                        result[line_num] = highlight_part(result[line_num], 0, len(result[line_num]))
+                if 0 <= end_y < len(result):
+                    result[end_y] = highlight_part(result[end_y], 0, screen_end_x)
         if self.cursor_x >= len(result[0]):
             result = fill3.appearance_resize(result, (self.cursor_x+1, len(result)))
-        cursor_line = result[self.cursor_y]
+        cursor_line = result[self.cursor_y - view_y]
         screen_x = len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x]))
         screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"]
                           else len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x+1])))
-        result[self.cursor_y] = (cursor_line[:screen_x] +
-                                 termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
-                                 cursor_line[screen_x_after:])
+        result[self.cursor_y - view_y] = (cursor_line[:screen_x] +
+                                          termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
+                                          cursor_line[screen_x_after:])
         return result
 
     def set_text(self, text):
@@ -342,7 +355,7 @@ class Editor:
 
     def page_down(self):
         new_y = self.cursor_y + self.last_height // 2
-        self.cursor_x, self.cursor_y = 0, min(len(self.text_widget.text) - 1, new_y)
+        self.cursor_x, self.cursor_y = 0, min(len(self.text_widget.actual_text) - 1, new_y)
 
     def jump_to_start_of_line(self):
         self.cursor_x = 0

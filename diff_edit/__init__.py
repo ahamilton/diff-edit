@@ -71,7 +71,7 @@ def get_diff(a_text, b_text):
 
 
 def get_lines(text_editor, start, end):
-    return tuple(text_editor.text_widget[start:end]), tuple(text_editor.text_widget.text[start:end])
+    return tuple(text_editor.text_widget[start:end]), tuple(text_editor.text_widget.appearance_interval((start, end)))
 
 
 def replace_part(a_str, start, end, part):
@@ -125,6 +125,20 @@ def draw_connector(columns, color, left_y, right_y):
                 line[index] = union_box_line("┃", line[index])
 
 
+def ranges_overlap(a, b):
+    return a[1] > b[0] and a[0] < b[1]
+
+
+def overlay_list(bg_list, fg_list, index):
+    if index < 0:
+        bg_len = len(bg_list)
+        bg_list[:len(fg_list) + index] = fg_list[abs(index):]
+        bg_list[bg_len:] = []
+    else:
+        bg_list[index:index + len(fg_list)] = fg_list[:len(bg_list) - index]
+    return bg_list
+
+
 class DiffEditor:
 
     def __init__(self, left_path, right_path):
@@ -142,27 +156,31 @@ class DiffEditor:
                     appearance[index] = highlight_str(appearance[index], (0, 200, 0), 0.6)
 
         def left_highlight_lines(appearance):
-            appearance = appearance.copy()
+            view_x, view_y = self.left_view.position
             for op, left_start, left_end, right_start, right_end in self.diff:
-                if op == "replace":
+                if (op == "replace"
+                    and ranges_overlap((left_start, left_end), (view_y, view_y + len(appearance)))):
                     left_lines = get_lines(self.left_editor, left_start, left_end)
                     right_lines = get_lines(self.right_editor, right_start, right_end)
                     left_appearance, right_appearance = highlight_modification(
                         left_lines, right_lines, self.show_sub_highlights)
-                    appearance[left_start:left_end] = left_appearance
-                highlight_lines(appearance, left_start, left_end, op, "delete")
+                    overlay_list(appearance, left_appearance, left_start - view_y)
+                highlight_lines(appearance, max(left_start, view_y) - view_y,
+                                min(left_end, view_y + len(appearance)) - view_y, op, "delete")
             return appearance
 
         def right_highlight_lines(appearance):
-            appearance = appearance.copy()
+            view_x, view_y = self.right_view.position
             for op, left_start, left_end, right_start, right_end in self.diff:
-                if op == "replace":
+                if (op == "replace"
+                    and ranges_overlap((right_start, right_end), (view_y, view_y + len(appearance)))):
                     left_lines = get_lines(self.left_editor, left_start, left_end)
                     right_lines = get_lines(self.right_editor, right_start, right_end)
                     left_appearance, right_appearance = highlight_modification(
                         left_lines, right_lines, self.show_sub_highlights)
-                    appearance[right_start:right_end] = right_appearance
-                highlight_lines(appearance, right_start, right_end, op, "insert")
+                    overlay_list(appearance, right_appearance, right_start - view_y)
+                highlight_lines(appearance, max(right_start, view_y) - view_y,
+                                min(right_end, view_y + len(appearance)) - view_y, op, "insert")
             return appearance
 
         left_decor = editor.Decor(self.left_editor.text_widget, left_highlight_lines)
