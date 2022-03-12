@@ -37,7 +37,7 @@ Example:
 
 Keys:
   (Ctrl-x, Ctrl-s)         Save file.
-  Alt-o                    Switch focus between editors. (toggle)
+  Alt-o or (Ctrl-x, o)     Switch focus between editors. (toggle)
   Alt-up                   Move to previous difference.
   Alt-down                 Move to next difference.
   Alt-c                    Change syntax highlighting theme. (cycle)
@@ -150,6 +150,7 @@ class DiffEditor:
         self.right_editor = editor.Editor()
         self.right_editor.load(right_path)
         self.show_sub_highlights = True
+        self.previous_term_code = None
         left_decor = editor.Decor(self.left_editor.text_widget, self._left_highlight_lines)
         self.left_editor.decor_widget.widget = left_decor
         self.left_view = self.left_editor.view_widget
@@ -308,11 +309,13 @@ class DiffEditor:
             editor_.cycle_syntax_highlighting()
 
     def on_keyboard_input(self, term_code):
-        if term_code in self.KEY_MAP:
-            self.KEY_MAP[term_code](self)
+        if action := (self.KEY_MAP.get((self.previous_term_code, term_code))
+                      or self.KEY_MAP.get(term_code)):
+            action(self)
         else:
             self.editors[0].on_keyboard_input(term_code)
             self.diff_changed()
+        self.previous_term_code = term_code
         fill3.APPEARANCE_CHANGED_EVENT.set()
 
     def on_mouse_input(self, term_code):
@@ -368,9 +371,9 @@ class DiffEditor:
         return fill3.join_horizontal(
             [left_appearance] + self.divider_appearance(height) + [right_appearance])
 
-    KEY_MAP = {terminal.ALT_o: switch_editor, terminal.ALT_h: toggle_highlights,
-               terminal.ALT_DOWN: jump_to_next_diff, terminal.ALT_UP: jump_to_previous_diff,
-               terminal.ALT_c: cycle_syntax_highlighting}
+    KEY_MAP = {(terminal.CTRL_X, "o"): switch_editor, terminal.ALT_o: switch_editor,
+               terminal.ALT_h: toggle_highlights, terminal.ALT_DOWN: jump_to_next_diff,
+               terminal.ALT_UP: jump_to_previous_diff, terminal.ALT_c: cycle_syntax_highlighting}
 
 
 def check_arguments():
