@@ -72,7 +72,7 @@ class Text:
 
     def __init__(self, text, padding_char=" "):
         self.padding_char = padding_char
-        self.actual_text = []
+        self.lines = []
         self.max_line_length = None
         lines = [""] if text == "" else text.splitlines()
         if text.endswith("\n"):
@@ -80,10 +80,10 @@ class Text:
         self[:] = lines
 
     def __len__(self):
-        return len(self.actual_text)
+        return len(self.lines)
 
     def __getitem__(self, line_index):
-        return self.actual_text[line_index]
+        return self.lines[line_index]
 
     @functools.lru_cache(maxsize=5000)
     def _convert_line(self, line, max_line_length):
@@ -97,10 +97,10 @@ class Text:
 
     @functools.cached_property
     def max_line_length(self):
-        return max(len(expand_str(line)) for line in self.actual_text)
+        return max(len(expand_str(line)) for line in self.lines)
 
     def _replace_lines(self, slice_, new_lines):
-        self.actual_text[slice_] = new_lines
+        self.lines[slice_] = new_lines
         with contextlib.suppress(AttributeError):
             del self.max_line_length
 
@@ -108,21 +108,21 @@ class Text:
         self._replace_lines(slice(index, index), [line])
 
     def append(self, line):
-        self.insert(len(self.actual_text), line)
+        self.insert(len(self.lines), line)
 
     def get_text(self):
         return "\n".join(self)
 
     def appearance(self):
-        return [self._convert_line(line, self.max_line_length) for line in self.actual_text]
+        return [self._convert_line(line, self.max_line_length) for line in self.lines]
 
     def appearance_dimensions(self):
-        return (self.max_line_length, len(self.actual_text))
+        return (self.max_line_length, len(self.lines))
 
     def appearance_interval(self, interval):
         start_y, end_y = interval
         return [self._convert_line(line, self.max_line_length)
-                for line in self.actual_text[start_y:end_y]]
+                for line in self.lines[start_y:end_y]]
 
 
 class Code(Text):
@@ -224,7 +224,7 @@ class Editor:
         try:
             return expand_str_inverse(self.text_widget[self.cursor_y])[self._cursor_x]
         except IndexError:
-            return len(self.text_widget.actual_text[self.cursor_y])
+            return len(self.text_widget.lines[self.cursor_y])
 
     @cursor_x.setter
     def cursor_x(self, x):
@@ -307,7 +307,7 @@ class Editor:
         if not self.is_left_aligned:
             self.view_widget.portal.is_left_aligned = False
         self._cursor_x, self._cursor_y = 0, 0
-        self.original_text = self.text_widget.actual_text.copy()
+        self.original_text = self.text_widget.lines.copy()
 
     def load(self, path):
         self.path = os.path.normpath(path)
@@ -317,7 +317,7 @@ class Editor:
     def save(self):
         with open(self.path, "w") as file_:
             file_.write(self.text_widget.get_text())
-        self.original_text = self.text_widget.actual_text.copy()
+        self.original_text = self.text_widget.lines.copy()
 
     def backspace(self):
         if self.cursor_x == 0:
@@ -339,7 +339,7 @@ class Editor:
             self.cursor_x -= 1
 
     def cursor_right(self):
-        if self.cursor_x == len(self.text_widget.actual_text[self.cursor_y]):
+        if self.cursor_x == len(self.text_widget.lines[self.cursor_y]):
             self.cursor_down()
             self.jump_to_start_of_line()
         else:
@@ -357,13 +357,13 @@ class Editor:
 
     def page_down(self):
         new_y = self.cursor_y + self.last_height // 2
-        self.cursor_x, self.cursor_y = 0, min(len(self.text_widget.actual_text) - 1, new_y)
+        self.cursor_x, self.cursor_y = 0, min(len(self.text_widget.lines) - 1, new_y)
 
     def jump_to_start_of_line(self):
         self.cursor_x = 0
 
     def jump_to_end_of_line(self):
-        self.cursor_x = len(self.text_widget.actual_text[self.cursor_y])
+        self.cursor_x = len(self.text_widget.lines[self.cursor_y])
 
     def open_line(self):
         line = self.text_widget[self.cursor_y]
@@ -654,7 +654,7 @@ class Editor:
         self.view_widget.position = max(0, new_x), max(0, new_y)
 
     def add_to_history(self):
-        self.history.append((self.text_widget.actual_text.copy(), self._cursor_x, self._cursor_y))
+        self.history.append((self.text_widget.lines.copy(), self._cursor_x, self._cursor_y))
 
     def on_keyboard_input(self, term_code):
         if term_code not in [terminal.CTRL_UNDERSCORE, terminal.CTRL_Z]:
@@ -712,7 +712,7 @@ class Editor:
 
     def appearance_for(self, dimensions):
         width, height = dimensions
-        is_changed = self.text_widget.actual_text != self.original_text
+        is_changed = self.text_widget.lines != self.original_text
         header = self.get_header(self.path, width, self.cursor_x, self.cursor_y, is_changed)
         self.last_width = width
         self.last_height = height
