@@ -275,11 +275,13 @@ class Editor:
                 result[start_y] = highlight_part(result[start_y], screen_start_x, screen_end_x)
             else:
                 if 0 <= start_y < len(result):
-                    result[start_y] = highlight_part(result[start_y], screen_start_x, len(result[start_y]))
+                    result[start_y] = highlight_part(result[start_y], screen_start_x,
+                                                     len(result[start_y]))
                 view_x, view_y = self.view_widget.position
                 for line_num in range(max(start_y+1, 0), min(end_y, self.last_height)):
                     if 0 <= line_num < len(result):
-                        result[line_num] = highlight_part(result[line_num], 0, len(result[line_num]))
+                        result[line_num] = highlight_part(result[line_num], 0,
+                                                          len(result[line_num]))
                 if 0 <= end_y < len(result):
                     result[end_y] = highlight_part(result[end_y], 0, screen_end_x)
         if self.cursor_x >= len(result[0]):
@@ -288,9 +290,9 @@ class Editor:
         screen_x = len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x]))
         screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"]
                           else len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x+1])))
-        result[self.cursor_y - view_y] = (cursor_line[:screen_x] +
-                                          termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
-                                          cursor_line[screen_x_after:])
+        result[self.cursor_y - view_y] = (
+            cursor_line[:screen_x] + termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert()
+            + cursor_line[screen_x_after:])
         return result
 
     def set_text(self, text):

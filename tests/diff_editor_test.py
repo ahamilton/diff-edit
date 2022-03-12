@@ -14,6 +14,6 @@ class OverlayListTestCase(unittest.TestCase):
         self.assertEqual(diff_edit.overlay_list([1, 2, 3, 4], [5, 6], -1), [6, 2, 3, 4])
         self.assertEqual(diff_edit.overlay_list([5, 6], [1, 2, 3, 4], -1), [2, 3])
 
-    
+
 if __name__ == "__main__":
     unittest.main()

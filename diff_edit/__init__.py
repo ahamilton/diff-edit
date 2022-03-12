@@ -8,6 +8,7 @@ Edit two files side by side, showing differences.
 
 
 import asyncio
+import contextlib
 import difflib
 import functools
 import os
@@ -50,7 +51,7 @@ _LINE_MAP = {"━": 0b0101, "┃": 0b1010, "┏": 0b0110, "┗": 0b1100, "┛": 
 _LINE_MAP_INVERTED = {v: k for k, v in _LINE_MAP.items()}
 
 
-@functools.lru_cache()
+@functools.cache
 def union_box_line(a_line, b_line):
     return _LINE_MAP_INVERTED[_LINE_MAP[a_line] | _LINE_MAP[b_line]]
 
@@ -66,12 +67,13 @@ def highlight_str(line, bg_color, transparency):
 
 
 @functools.lru_cache(maxsize=500)
-def get_diff(a_text, b_text):
+def line_diff(a_text, b_text):
     return difflib.SequenceMatcher(a=a_text, b=b_text).get_opcodes()
 
 
 def get_lines(text_editor, start, end):
-    return tuple(text_editor.text_widget[start:end]), tuple(text_editor.text_widget.appearance_interval((start, end)))
+    return (tuple(text_editor.text_widget[start:end]),
+            tuple(text_editor.text_widget.appearance_interval((start, end))))
 
 
 def replace_part(a_str, start, end, part):
@@ -86,7 +88,7 @@ def highlight_modification(a_lines, b_lines, show_sub_highlights):
     right_line = fill3.join("\n", tuple(colored_line[:len(line)]
                                         for line, colored_line in zip(*b_lines)))
     if show_sub_highlights:
-        diff = get_diff(left_line.data, right_line.data)
+        diff = line_diff(left_line.data, right_line.data)
         for opcode, left_start, left_end, right_start, right_end in diff:
             color = termstr.Color.white if opcode == "replace" else termstr.Color.green
             if opcode == "delete" or opcode == "replace":
@@ -148,49 +150,56 @@ class DiffEditor:
         self.right_editor = editor.Editor()
         self.right_editor.load(right_path)
         self.show_sub_highlights = True
-        self.diff = None
-
-        def highlight_lines(appearance, start, end, opcode, change_opcode):
-            if opcode == change_opcode:
-                for index in range(start, end):
-                    appearance[index] = highlight_str(appearance[index], (0, 200, 0), 0.6)
-
-        def left_highlight_lines(appearance):
-            view_x, view_y = self.left_view.position
-            for op, left_start, left_end, right_start, right_end in self.diff:
-                if (op == "replace"
-                    and ranges_overlap((left_start, left_end), (view_y, view_y + len(appearance)))):
-                    left_lines = get_lines(self.left_editor, left_start, left_end)
-                    right_lines = get_lines(self.right_editor, right_start, right_end)
-                    left_appearance, right_appearance = highlight_modification(
-                        left_lines, right_lines, self.show_sub_highlights)
-                    overlay_list(appearance, left_appearance, left_start - view_y)
-                highlight_lines(appearance, max(left_start, view_y) - view_y,
-                                min(left_end, view_y + len(appearance)) - view_y, op, "delete")
-            return appearance
-
-        def right_highlight_lines(appearance):
-            view_x, view_y = self.right_view.position
-            for op, left_start, left_end, right_start, right_end in self.diff:
-                if (op == "replace"
-                    and ranges_overlap((right_start, right_end), (view_y, view_y + len(appearance)))):
-                    left_lines = get_lines(self.left_editor, left_start, left_end)
-                    right_lines = get_lines(self.right_editor, right_start, right_end)
-                    left_appearance, right_appearance = highlight_modification(
-                        left_lines, right_lines, self.show_sub_highlights)
-                    overlay_list(appearance, right_appearance, right_start - view_y)
-                highlight_lines(appearance, max(right_start, view_y) - view_y,
-                                min(right_end, view_y + len(appearance)) - view_y, op, "insert")
-            return appearance
-
-        left_decor = editor.Decor(self.left_editor.text_widget, left_highlight_lines)
+        left_decor = editor.Decor(self.left_editor.text_widget, self._left_highlight_lines)
         self.left_editor.decor_widget.widget = left_decor
         self.left_view = self.left_editor.view_widget
-        right_decor = editor.Decor(self.right_editor.text_widget, right_highlight_lines)
+        right_decor = editor.Decor(self.right_editor.text_widget, self._right_highlight_lines)
         self.right_editor.decor_widget.widget = right_decor
         self.right_view = self.right_editor.view_widget
         self.right_editor.is_editing = False
         self.editors = [self.left_editor, self.right_editor]
+
+    @functools.cached_property
+    def diff(self):
+        return difflib.SequenceMatcher(a=self.left_editor.text_widget,
+                                       b=self.right_editor.text_widget).get_opcodes()
+
+    def diff_changed(self):
+        with contextlib.suppress(AttributeError):
+            del self.diff
+
+    def _highlight_lines(self, appearance, start, end, opcode, change_opcode):
+        if opcode == change_opcode:
+            for index in range(start, end):
+                appearance[index] = highlight_str(appearance[index], (0, 200, 0), 0.6)
+
+    def _left_highlight_lines(self, appearance):
+        view_x, view_y = self.left_view.position
+        view_end_y = view_y + len(appearance)
+        for op, left_start, left_end, right_start, right_end in self.diff:
+            if op == "replace" and ranges_overlap((left_start, left_end), (view_y, view_end_y)):
+                left_lines = get_lines(self.left_editor, left_start, left_end)
+                right_lines = get_lines(self.right_editor, right_start, right_end)
+                left_appearance, right_appearance = highlight_modification(
+                    left_lines, right_lines, self.show_sub_highlights)
+                overlay_list(appearance, left_appearance, left_start - view_y)
+            self._highlight_lines(appearance, max(left_start, view_y) - view_y,
+                                  min(left_end, view_end_y) - view_y, op, "delete")
+        return appearance
+
+    def _right_highlight_lines(self, appearance):
+        view_x, view_y = self.right_view.position
+        view_end_y = view_y + len(appearance)
+        for op, left_start, left_end, right_start, right_end in self.diff:
+            if op == "replace" and ranges_overlap((right_start, right_end), (view_y, view_end_y)):
+                left_lines = get_lines(self.left_editor, left_start, left_end)
+                right_lines = get_lines(self.right_editor, right_start, right_end)
+                left_appearance, right_appearance = highlight_modification(
+                    left_lines, right_lines, self.show_sub_highlights)
+                overlay_list(appearance, right_appearance, right_start - view_y)
+            self._highlight_lines(appearance, max(right_start, view_y) - view_y,
+                                  min(right_end, view_end_y) - view_y, op, "insert")
+        return appearance
 
     def _equivalent_line(self, y):
         for opcode, left_start, left_end, right_start, right_end in self.diff:
@@ -229,12 +238,12 @@ class DiffEditor:
                 self.left_editor.text_widget[left_start:left_end] = \
                     [self.right_editor.text_widget[line_num]
                      for line_num in range(right_start, right_end)]
-                self.diff = None
+                self.diff_changed()
             elif x == right_x and right_y == y:
                 self.right_editor.text_widget[right_start:right_end] = \
                     [self.left_editor.text_widget[line_num]
                      for line_num in range(left_start, left_end)]
-                self.diff = None
+                self.diff_changed()
 
     def on_mouse_press(self, x, y, left_x, right_x):
         if x < left_x:
@@ -260,10 +269,6 @@ class DiffEditor:
                 self.left_editor.on_mouse_drag(x, y)
             elif x > right_x:
                 self.right_editor.on_mouse_drag(x - right_x - 1, y)
-
-    def update_diff(self):
-        self.diff = difflib.SequenceMatcher(a=self.left_editor.text_widget,
-                                            b=self.right_editor.text_widget).get_opcodes()
 
     def toggle_highlights(self):
         self.show_sub_highlights = not self.show_sub_highlights
@@ -307,7 +312,7 @@ class DiffEditor:
             self.KEY_MAP[term_code](self)
         else:
             self.editors[0].on_keyboard_input(term_code)
-            self.diff = None
+            self.diff_changed()
         fill3.APPEARANCE_CHANGED_EVENT.set()
 
     def on_mouse_input(self, term_code):
@@ -351,8 +356,6 @@ class DiffEditor:
 
     def appearance_for(self, dimensions):
         width, height = self.last_dimensions = dimensions
-        if self.diff is None:
-            self.update_diff()
         self.follow_scroll()
         divider_width = 3
         left_width = (width - divider_width) // 2
