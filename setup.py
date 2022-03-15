@@ -18,4 +18,4 @@ setup(name="diff-edit",
       entry_points={"console_scripts": ["diff-edit=diff_edit:main"]},
       install_requires=[
           "pygments==2.10.0", "docopt==0.6.2",
-          "fill3 @ git+https://github.com/ahamilton/eris@v2022.03.12#subdirectory=fill3"])
+          "fill3 @ git+https://github.com/ahamilton/eris@v2022.03.15#subdirectory=fill3"])
