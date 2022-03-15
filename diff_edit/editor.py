@@ -262,10 +262,10 @@ class Editor:
         result = appearance
         if not self.is_editing:
             return result
+        cursor_y = self.cursor_y - view_y
         if self.mark is None:
-            with contextlib.suppress(IndexError):  # Fix. The cursor should always be on screen.
-                result[self.cursor_y - view_y] = highlight_str(result[self.cursor_y - view_y],
-                                                               termstr.Color.white, 0.8)
+            if 0 <= cursor_y < len(result):
+                result[cursor_y] = highlight_str(result[cursor_y], termstr.Color.white, 0.8)
         else:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
             screen_start_x = len(expand_str(self.text_widget[start_y][:start_x]))
@@ -287,13 +287,14 @@ class Editor:
                     result[end_y] = highlight_part(result[end_y], 0, screen_end_x)
         if self.cursor_x >= len(result[0]):
             result = fill3.appearance_resize(result, (self.cursor_x+1, len(result)))
-        cursor_line = result[self.cursor_y - view_y]
-        screen_x = len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x]))
-        screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"]
-                          else len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x+1])))
-        result[self.cursor_y - view_y] = (
-            cursor_line[:screen_x] + termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert()
-            + cursor_line[screen_x_after:])
+        if 0 <= cursor_y < len(result):
+            cursor_line = result[cursor_y]
+            screen_x = len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x]))
+            screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"] else
+                              len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x+1])))
+            result[cursor_y] = (cursor_line[:screen_x] +
+                                termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
+                                cursor_line[screen_x_after:])
         return result
 
     def set_text(self, text):
