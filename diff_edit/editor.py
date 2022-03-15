@@ -217,6 +217,7 @@ class Editor:
         self.theme_index = 0
         self.is_overwriting = False
         self.previous_term_code = None
+        self.last_mouse_position = 0, 0
         self.history = []
 
     @property
