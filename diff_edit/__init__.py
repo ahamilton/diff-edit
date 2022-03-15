@@ -109,8 +109,8 @@ def draw_connector(columns, color, left_y, right_y):
     left_corner, right_corner = ("┓", "┗") if left_y < right_y else ("┛", "┏")
     if left_y == right_y:
         left_corner, right_corner = "━", "━"
-    for column, y, arrow, corner in [(left_arrows, left_y, "╺", left_corner),
-                                     (right_arrows, right_y, "╸", right_corner)]:
+    for column, y, arrow, corner in [(left_arrows, left_y, "◂", left_corner),
+                                     (right_arrows, right_y, "▸", right_corner)]:
         if y <= 0:
             pass
         elif y >= height - 1:
