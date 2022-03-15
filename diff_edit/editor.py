@@ -263,8 +263,9 @@ class Editor:
         if not self.is_editing:
             return result
         if self.mark is None:
-            result[self.cursor_y - view_y] = highlight_str(result[self.cursor_y - view_y],
-                                                           termstr.Color.white, 0.8)
+            with contextlib.suppress(IndexError):  # Fix. The cursor should always be on screen.
+                result[self.cursor_y - view_y] = highlight_str(result[self.cursor_y - view_y],
+                                                               termstr.Color.white, 0.8)
         else:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
             screen_start_x = len(expand_str(self.text_widget[start_y][:start_x]))

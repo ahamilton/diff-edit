@@ -209,7 +209,8 @@ class DiffEditor:
                     right_start, right_end, left_start, left_end
             if left_start <= y < left_end:
                 fraction = (y - left_start) / (left_end - left_start)
-                return round(right_start + fraction * (right_end - right_start))
+                other_y = round(right_start + fraction * (right_end - right_start))
+                return other_y - 1 if other_y == len(self.editors[1].text_widget) else other_y
         return 0
 
     def follow_scroll(self):
