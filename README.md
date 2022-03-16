@@ -1,7 +1,5 @@
 # Diff-edit
 
-:warning: Out of order, do not use.
-
 ## Summary
 
 Edit two files side by side, showing differences.
