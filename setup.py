@@ -8,7 +8,7 @@ except ImportError:
 
 
 setup(name="diff-edit",
-      version="v2022.02.23",
+      version="v2022.03.16",
       description="Edit two files side by side, showing differences.",
       url="https://github.com/ahamilton/diff-edit",
       author="Andrew Hamilton",
