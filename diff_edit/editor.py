@@ -4,6 +4,7 @@
 
 import asyncio
 import contextlib
+import enum
 import functools
 import os
 import string
@@ -29,7 +30,10 @@ def highlight_str(line, bg_color, transparency=0.6):
     return termstr.TermStr(line).transform_style(blend_style)
 
 
-PYTHON_LEXER = pygments.lexers.get_lexer_by_name("python")
+def highlight_line(line):
+    return highlight_str(line, termstr.Color.white, 0.8)
+
+
 NATIVE_STYLE = pygments.styles.get_style_by_name("paraiso-dark")
 
 
@@ -128,7 +132,7 @@ class Text:
 class Code(Text):
 
     def __init__(self, text, path, theme=NATIVE_STYLE):
-        self.lexer = pygments.lexers.get_lexer_for_filename(path, text, stripnl=False)
+        self.lexer = pygments.lexers.get_lexer_for_filename(path, text)
         self.theme = theme
         padding_char = None
         Text.__init__(self, text, padding_char)
@@ -199,6 +203,124 @@ def expand_str_inverse(str_):
     return result
 
 
+def _wrap_text_lines(words, width):
+    cursor = len(words[0])
+    first_word = 0
+    for index, word in enumerate(words[1:]):
+        if cursor + 1 + len(word) <= width:
+            cursor += (1 + len(word))
+        else:
+            yield words[first_word:index+1]
+            first_word = index + 1
+            cursor = len(word)
+    yield words[first_word:]
+
+
+def wrap_text(words, width):
+    appearance = []
+    coords = []
+    for index, line in enumerate(_wrap_text_lines(words, width)):
+        line = list(line)
+        content = fill3.join(" ", line)
+        appearance.append(content.center(width))
+        cursor = index * width + round((width - len(content)) / 2)
+        for word in line:
+            coords.append((cursor, cursor + len(word)))
+            cursor += (len(word) + 1)
+    return appearance, coords
+
+
+class Line(enum.Enum):
+    class_ = enum.auto()
+    function = enum.auto()
+    endpoint = enum.auto()
+
+
+@functools.lru_cache(1)
+def parts_lines(source, lexer):
+    cursor = 0
+    line_num = 0
+    line_lengths = [len(line) for line in source.splitlines(keepends=True)]
+    result = [(Line.endpoint, "top", 0)]
+    for position, token_type, text in lexer.get_tokens_unprocessed(source):
+        while position >= cursor:
+            cursor += line_lengths[line_num]
+            line_num += 1
+        if token_type == pygments.token.Name.Class:
+            result.append((Line.class_, text, line_num - 1))
+        elif token_type in [pygments.token.Name.Function, pygments.token.Name.Function.Magic]:
+            result.append((Line.function, text, line_num - 1))
+    result.append((Line.endpoint, "bottom", line_num - 1))
+    return result
+
+
+COLOR_MAP = {Line.class_: termstr.Color.red,
+             Line.function: termstr.Color.green,
+             Line.endpoint: termstr.Color.white}
+
+
+class Parts:
+
+    def __init__(self, editor, source, lexer):
+        self.editor = editor
+        self.lines = parts_lines(source, lexer)
+        self.parts = [termstr.TermStr(text).fg_color(COLOR_MAP[line_type])
+                      for line_type, text, line_num in self.lines]
+        self.width, self.height = None, None
+        self.set_cursor()
+
+    def set_cursor(self):
+        for index, (line_type, text, line_num) in enumerate(self.lines):
+            if line_num > self.editor.cursor_y:
+                self.cursor = index - 1
+                break
+        else:
+            self.cursor = len(self.lines) - 1
+
+    def _move_cursor(self, delta):
+        self.cursor = (self.cursor + delta) % len(self.parts)
+        self.editor.cursor_x, self.editor.cursor_y = 0, self.lines[self.cursor][2]
+        x, y = self.editor.view_widget.portal.position
+        self.editor.view_widget.portal.position = x, self.editor.cursor_y - 1
+
+    def cursor_left(self):
+        self._move_cursor(-1)
+
+    def cursor_right(self):
+        self._move_cursor(1)
+
+    def on_keyboard_input(self, term_code):
+        if term_code == terminal.ESC:
+            self.editor.parts_widget = None
+            self.editor.is_editing = True
+            self.editor.center_cursor()
+        elif term_code == terminal.LEFT:
+            self.cursor_left()
+        elif term_code == terminal.RIGHT:
+            self.cursor_right()
+        fill3.APPEARANCE_CHANGED_EVENT.set()
+
+    def appearance(self):
+        width, height = self.dimensions
+        parts = self.parts.copy()
+        parts[self.cursor] = parts[self.cursor].invert()
+        result, coords = wrap_text(parts, width)
+        if len(result) > height:
+            appearance, coords = wrap_text(parts, width - 1)
+            line_num = coords[self.cursor][0] // (width - 1)
+            appearance[line_num] = highlight_line(appearance[line_num])
+            view_widget = fill3.View.from_widget(fill3.Fixed(appearance))
+            if line_num >= height:
+                x, y = view_widget.portal.position
+                view_widget.portal.position = x, line_num // height * height
+                view_widget.portal.limit_scroll(self.dimensions, (width, len(appearance)))
+            result = view_widget.appearance_for(self.dimensions)
+        else:
+            line_num = coords[self.cursor][0] // width
+            result[line_num] = highlight_line(result[line_num])
+        return result
+
+
 class Editor:
 
     TAB_SIZE = 4
@@ -219,6 +341,7 @@ class Editor:
         self.previous_term_code = None
         self.last_mouse_position = 0, 0
         self.history = []
+        self.parts_widget = None
 
     @property
     def cursor_x(self):
@@ -266,7 +389,7 @@ class Editor:
         cursor_y = self.cursor_y - view_y
         if self.mark is None:
             if 0 <= cursor_y < len(result):
-                result[cursor_y] = highlight_str(result[cursor_y], termstr.Color.white, 0.8)
+                result[cursor_y] = highlight_line(result[cursor_y])
         else:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
             screen_start_x = len(expand_str(self.text_widget[start_y][:start_x]))
@@ -590,6 +713,11 @@ class Editor:
     def quit(self):
         fill3.SHUTDOWN_EVENT.set()
 
+    def show_parts_list(self):
+        self.parts_widget = Parts(self, self.get_text(), self.text_widget.lexer)
+        self.is_editing = False
+        self.mark = None
+
     def ring_bell(self):
         if "unittest" not in sys.modules:
             print("\a", end="")
@@ -660,6 +788,9 @@ class Editor:
         self.history.append((self.text_widget.lines.copy(), self._cursor_x, self._cursor_y))
 
     def on_keyboard_input(self, term_code):
+        if self.parts_widget is not None:
+            self.parts_widget.on_keyboard_input(term_code)
+            return
         if term_code not in [terminal.CTRL_UNDERSCORE, terminal.CTRL_Z]:
             self.add_to_history()
         if action := (Editor.KEY_MAP.get((self.previous_term_code, term_code))
@@ -715,12 +846,18 @@ class Editor:
 
     def appearance_for(self, dimensions):
         width, height = dimensions
+        if self.parts_widget is None:
+            parts_appearance = []
+        else:
+            self.parts_widget.dimensions = width, height // 4
+            parts_appearance = self.parts_widget.appearance()
+        self.parts_height = len(parts_appearance)
         is_changed = self.text_widget.lines != self.original_text
         header = self.get_header(self.path, width, self.cursor_x, self.cursor_y, is_changed)
         self.last_width = width
         self.last_height = height
-        result = [header] + self.view_widget.appearance_for((width, height - 1))
-        return result
+        body_appearance = self.view_widget.appearance_for((width, height-len(parts_appearance)-1))
+        return [header] + parts_appearance + body_appearance
 
     KEY_MAP = {
         (terminal.CTRL_X, terminal.CTRL_S): save, terminal.BACKSPACE: backspace,
@@ -742,7 +879,7 @@ class Editor:
         terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, (terminal.CTRL_X, terminal.CTRL_C): quit,
-        terminal.ESC: quit, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
+        terminal.ESC: show_parts_list, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
         (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: undo,
         terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command, terminal.INSERT: toggle_overwrite,
         (terminal.CTRL_C, ">"): indent, (terminal.CTRL_C, "<"): dedent}

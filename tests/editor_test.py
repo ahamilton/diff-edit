@@ -3,6 +3,7 @@
 
 import unittest
 
+import pygments.lexers.python
 import termstr
 
 import diff_edit.editor as editor
@@ -67,6 +68,27 @@ class TextWidgetTestCase(unittest.TestCase):
                          [0, 1, 1, 1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 3, 3, 4])
         self.assertEqual(editor.expand_str_inverse("♓"), [0, 0])
         self.assertEqual(editor.expand_str_inverse("♓\tb"), [0, 0, 1, 1, 1, 1, 1, 1, 2])
+
+
+class WrapTextTestCase(unittest.TestCase):
+
+    def test_wrap_text(self):
+        self.assertEqual(editor.wrap_text(["aa", "bb", "cc"], 10),
+                         ([" aa bb cc "], [(1, 3), (4, 6), (7, 9)]))
+        self.assertEqual(editor.wrap_text(["aa", "bb", "cc"], 5),
+                         (["aa bb", "  cc "], [(0, 2), (3, 5), (7, 9)]))
+
+
+class PartsListTestCase(unittest.TestCase):
+
+    def test_parts_lines(self):
+        python_lexer = pygments.lexers.python.PythonLexer()
+        self.assertEqual(editor.parts_lines("class A:\n    pass", python_lexer),
+                         [(editor.Line.endpoint, "top", 0), (editor.Line.class_, "A", 0),
+                          (editor.Line.endpoint, "bottom", 1)])
+        self.assertEqual(editor.parts_lines("\ndef B:", python_lexer),
+                         [(editor.Line.endpoint, "top", 0), (editor.Line.function, "B", 1),
+                          (editor.Line.endpoint, "bottom", 1)])
 
 
 class ExpandTabsTestCase(unittest.TestCase):
