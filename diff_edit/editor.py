@@ -343,17 +343,23 @@ class Editor:
         self.history = []
         self.parts_widget = None
 
+    def screen_x(self, x, y):
+        return len(expand_str(self.text_widget[y][:x]))
+
+    def model_x(self, x, y):
+        return expand_str_inverse(self.text_widget[y])[x]
+
     @property
     def cursor_x(self):
         try:
-            return expand_str_inverse(self.text_widget[self.cursor_y])[self._cursor_x]
+            return self.model_x(self._cursor_x, self.cursor_y)
         except IndexError:
             return len(self.text_widget.lines[self.cursor_y])
 
     @cursor_x.setter
     def cursor_x(self, x):
         try:
-            self._cursor_x = len(expand_str(self.text_widget[self.cursor_y][:x]))
+            self._cursor_x = self.screen_x(x, self.cursor_y)
         except IndexError:
             self._cursor_x = x
 
@@ -392,8 +398,8 @@ class Editor:
                 result[cursor_y] = highlight_line(result[cursor_y])
         else:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
-            screen_start_x = len(expand_str(self.text_widget[start_y][:start_x]))
-            screen_end_x = len(expand_str(self.text_widget[end_y][:end_x]))
+            screen_start_x = self.screen_x(start_x, start_y)
+            screen_end_x = self.screen_x(end_x, end_y)
             start_y -= view_y
             end_y -= view_y
             if start_y == end_y:
@@ -413,9 +419,9 @@ class Editor:
             result = fill3.appearance_resize(result, (self.cursor_x+1, len(result)))
         if 0 <= cursor_y < len(result):
             cursor_line = result[cursor_y]
-            screen_x = len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x]))
+            screen_x = self.screen_x(self.cursor_x, self.cursor_y)
             screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"] else
-                              len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x+1])))
+                              self.screen_x(self.cursor_x + 1, self.cursor_y))
             result[cursor_y] = (cursor_line[:screen_x] +
                                 termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
                                 cursor_line[screen_x_after:])
@@ -777,7 +783,7 @@ class Editor:
             new_y = self.cursor_y - height // 2
         else:
             new_y = view_y
-        screen_x = len(expand_str(self.text_widget[self.cursor_y][:self.cursor_x]))
+        screen_x = self.screen_x(self.cursor_x, self.cursor_y)
         if screen_x >= view_x + width or screen_x < view_x:
             new_x = screen_x - width // 2
         else:
