@@ -340,7 +340,6 @@ class Editor:
         self.is_overwriting = False
         self.previous_term_code = None
         self.last_mouse_position = 0, 0
-        self.history = []
         self.parts_widget = None
 
     def screen_x(self, x, y):
@@ -440,6 +439,8 @@ class Editor:
             self.view_widget.portal.is_left_aligned = False
         self._cursor_x, self._cursor_y = 0, 0
         self.original_text = self.text_widget.lines.copy()
+        self.history = []
+        self.add_to_history()
 
     def load(self, path):
         self.path = os.path.normpath(path)
@@ -730,6 +731,8 @@ class Editor:
 
     def undo(self):
         self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
+        if self.history == []:
+            self.add_to_history()
 
     def toggle_overwrite(self):
         self.is_overwriting = not self.is_overwriting
@@ -797,17 +800,18 @@ class Editor:
         if self.parts_widget is not None:
             self.parts_widget.on_keyboard_input(term_code)
             return
-        if term_code not in [terminal.CTRL_UNDERSCORE, terminal.CTRL_Z]:
-            self.add_to_history()
         if action := (Editor.KEY_MAP.get((self.previous_term_code, term_code))
                       or Editor.KEY_MAP.get(term_code)):
             try:
+                if action in Editor.CHANGE_ACTIONS:
+                    self.add_to_history()
                 action(self)
             except IndexError:
                 self.ring_bell()
         elif len(term_code) == 1 and ord(term_code) < 32:
             pass
         else:
+            self.add_to_history()
             self.insert_text(term_code, is_overwriting=self.is_overwriting)
         self.previous_term_code = term_code
         self.follow_cursor()
@@ -889,6 +893,10 @@ class Editor:
         (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: undo,
         terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command, terminal.INSERT: toggle_overwrite,
         (terminal.CTRL_C, ">"): indent, (terminal.CTRL_C, "<"): dedent}
+
+    CHANGE_ACTIONS = {open_line, enter, delete_selection, delete_character, delete_right,
+                      paste_from_clipboard, delete_backward, join_lines, comment_lines, delete_line,
+                      tab_align, insert_tab, indent, dedent}
 
 
 def main():
