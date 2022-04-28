@@ -892,7 +892,7 @@ class Editor:
         terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command, terminal.INSERT: toggle_overwrite,
         (terminal.CTRL_C, ">"): indent, (terminal.CTRL_C, "<"): dedent}
 
-    CHANGE_ACTIONS = {open_line, enter, delete_selection, delete_character, delete_right,
+    CHANGE_ACTIONS = {backspace, open_line, enter, delete_selection, delete_character, delete_right,
                       paste_from_clipboard, delete_backward, join_lines, comment_lines, delete_line,
                       tab_align, insert_tab, indent, dedent}
 
