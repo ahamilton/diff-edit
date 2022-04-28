@@ -808,9 +808,7 @@ class Editor:
                 action(self)
             except IndexError:
                 self.ring_bell()
-        elif len(term_code) == 1 and ord(term_code) < 32:
-            pass
-        else:
+        elif not (len(term_code) == 1 and ord(term_code) < 32):
             self.add_to_history()
             self.insert_text(term_code, is_overwriting=self.is_overwriting)
         self.previous_term_code = term_code
