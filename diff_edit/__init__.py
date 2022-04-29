@@ -237,11 +237,13 @@ class DiffEditor:
             left_y = left_start - left_scroll + 1  # 1 for header
             right_y = right_start - right_scroll + 1  # 1 for header
             if x == left_x and left_y == y:
+                self.left_editor.add_to_history()
                 self.left_editor.text_widget[left_start:left_end] = \
                     [self.right_editor.text_widget[line_num]
                      for line_num in range(right_start, right_end)]
                 self.diff_changed()
             elif x == right_x and right_y == y:
+                self.right_editor.add_to_history()
                 self.right_editor.text_widget[right_start:right_end] = \
                     [self.left_editor.text_widget[line_num]
                      for line_num in range(left_start, left_end)]
