@@ -239,14 +239,12 @@ class DiffEditor:
             if x == left_x and left_y == y:
                 self.left_editor.add_to_history()
                 self.left_editor.text_widget[left_start:left_end] = \
-                    [self.right_editor.text_widget[line_num]
-                     for line_num in range(right_start, right_end)]
+                    self.right_editor.text_widget[right_start:right_end]
                 self.diff_changed()
             elif x == right_x and right_y == y:
                 self.right_editor.add_to_history()
                 self.right_editor.text_widget[right_start:right_end] = \
-                    [self.left_editor.text_widget[line_num]
-                     for line_num in range(left_start, left_end)]
+                    self.left_editor.text_widget[left_start:left_end]
                 self.diff_changed()
 
     def on_mouse_press(self, x, y, left_x, right_x):
