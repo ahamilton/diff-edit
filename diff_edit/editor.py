@@ -732,7 +732,7 @@ class Editor:
 
     def add_to_history(self):
         if self.history_position < len(self.history):
-            self.history[self.history_position:] = []
+            self.history.extend(reversed(self.history[self.history_position:-1]))
         self.history.append((self.text_widget.lines.copy(), self._cursor_x, self._cursor_y))
         self.history_position = len(self.history)
 
@@ -744,13 +744,6 @@ class Editor:
             self.add_to_history()
             self.history_position -= 1
         self.history_position -= 1
-        self.text_widget[:], self._cursor_x, self._cursor_y = self.history[self.history_position]
-
-    def redo(self):
-        if self.history_position >= len(self.history) - 1:
-            self.ring_bell()
-            return
-        self.history_position += 1
         self.text_widget[:], self._cursor_x, self._cursor_y = self.history[self.history_position]
 
     def toggle_overwrite(self):
@@ -904,7 +897,7 @@ class Editor:
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, (terminal.CTRL_X, terminal.CTRL_C): quit,
         terminal.ESC: show_parts_list, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
-        (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: redo,
+        (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: undo,
         terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command, terminal.INSERT: toggle_overwrite,
         (terminal.CTRL_C, ">"): indent, (terminal.CTRL_C, "<"): dedent}
 
