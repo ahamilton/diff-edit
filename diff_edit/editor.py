@@ -745,6 +745,7 @@ class Editor:
             self.history_position -= 1
         self.history_position -= 1
         self.text_widget[:], self._cursor_x, self._cursor_y = self.history[self.history_position]
+        self.mark = None
 
     def toggle_overwrite(self):
         self.is_overwriting = not self.is_overwriting
