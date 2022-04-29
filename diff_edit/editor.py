@@ -440,6 +440,7 @@ class Editor:
         self._cursor_x, self._cursor_y = 0, 0
         self.original_text = self.text_widget.lines.copy()
         self.history = []
+        self.history_position = 0
         self.add_to_history()
 
     def load(self, path):
@@ -729,10 +730,28 @@ class Editor:
         if "unittest" not in sys.modules:
             print("\a", end="")
 
+    def add_to_history(self):
+        if self.history_position < len(self.history):
+            self.history[self.history_position:] = []
+        self.history.append((self.text_widget.lines.copy(), self._cursor_x, self._cursor_y))
+        self.history_position = len(self.history)
+
     def undo(self):
-        self.text_widget[:], self._cursor_x, self._cursor_y = self.history.pop()
-        if self.history == []:
+        if self.history_position == 0:
+            self.ring_bell()
+            return
+        if self.history_position == len(self.history):
             self.add_to_history()
+            self.history_position -= 1
+        self.history_position -= 1
+        self.text_widget[:], self._cursor_x, self._cursor_y = self.history[self.history_position]
+
+    def redo(self):
+        if self.history_position >= len(self.history) - 1:
+            self.ring_bell()
+            return
+        self.history_position += 1
+        self.text_widget[:], self._cursor_x, self._cursor_y = self.history[self.history_position]
 
     def toggle_overwrite(self):
         self.is_overwriting = not self.is_overwriting
@@ -792,9 +811,6 @@ class Editor:
         else:
             new_x = view_x
         self.view_widget.position = max(0, new_x), max(0, new_y)
-
-    def add_to_history(self):
-        self.history.append((self.text_widget.lines.copy(), self._cursor_x, self._cursor_y))
 
     def on_keyboard_input(self, term_code):
         if self.parts_widget is not None:
@@ -888,7 +904,7 @@ class Editor:
         terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
         terminal.ALT_c: cycle_syntax_highlighting, (terminal.CTRL_X, terminal.CTRL_C): quit,
         terminal.ESC: show_parts_list, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
-        (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: undo,
+        (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: redo,
         terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command, terminal.INSERT: toggle_overwrite,
         (terminal.CTRL_C, ">"): indent, (terminal.CTRL_C, "<"): dedent}
 
