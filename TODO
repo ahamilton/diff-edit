@@ -1,6 +1,5 @@
 Todo:
 - Keyboard shortcuts for resolving differences.
-- Colourise file name.
 - Search.
 - Search and replace.
 
@@ -31,6 +30,7 @@ Done:
 - Bulk indent/dedent.
 - Large pastes.
 - tabs.
+- Colourise file name.
 
 
 Shelved:

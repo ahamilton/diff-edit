@@ -6,18 +6,56 @@ import asyncio
 import contextlib
 import enum
 import functools
+import importlib
+import importlib.resources
 import os
 import string
 import sys
 
+import diff_edit
 import fill3
 import fill3.terminal as terminal
+import lscolors
 import pygments
 import pygments.lexers
 import pygments.styles
 import termstr
 
 import cwcwidth
+
+
+def get_ls_color_codes():
+    with importlib.resources.open_text(diff_edit, "LS_COLORS.sh") as lscolors_file:
+        codes = lscolors_file.readline().strip()[len("LS_COLORS='"):-len("';")]
+        return lscolors._parse_ls_colors(codes)
+
+
+_LS_COLOR_CODES = get_ls_color_codes()
+
+
+def _charstyle_of_path(path):
+    color_code = lscolors.color_code_for_path(path, _LS_COLOR_CODES)
+    if color_code is None:
+        return termstr.CharStyle()
+    term_text = termstr.ESC + "[" + color_code + "m-"
+    return termstr.TermStr.from_term(term_text).style[0]
+
+
+@functools.lru_cache(maxsize=100)
+def path_colored(path):
+    char_style = _charstyle_of_path(path)
+    if path.startswith("./"):
+        path = path[2:]
+    dirname, basename = os.path.split(path)
+    if dirname == "":
+        return termstr.TermStr(basename, char_style)
+    else:
+        dirname = dirname + os.path.sep
+        dir_style = _charstyle_of_path(os.path.sep)
+        parts = [termstr.TermStr(part, dir_style) for part in dirname.split(os.path.sep)]
+        path_sep = termstr.TermStr(os.path.sep).fg_color(termstr.Color.grey_150)
+        dir_name = fill3.join(path_sep, parts)
+        return dir_name + termstr.TermStr(basename, char_style)
 
 
 @functools.lru_cache(maxsize=100)
@@ -852,15 +890,14 @@ class Editor:
     def appearance(self):
         return self.decor_widget.appearance()
 
-    _HEADER_STYLE = termstr.CharStyle(fg_color=termstr.Color.white, bg_color=termstr.Color.green)
-
     @functools.lru_cache(maxsize=100)
     def get_header(self, path, width, cursor_x, cursor_y, is_changed):
         change_marker = "*" if is_changed else ""
-        cursor_position = f"Line {cursor_y+1} Column {cursor_x+1:<3}"
-        path_part = (path + change_marker).ljust(width - len(cursor_position) - 2)
-        return (termstr.TermStr(" " + path_part, self._HEADER_STYLE).bold() +
-                termstr.TermStr(cursor_position + " ", self._HEADER_STYLE))
+        cursor_position = termstr.TermStr(
+            f"Line {cursor_y+1} Column {cursor_x+1:<3}").fg_color(termstr.Color.grey_100)
+        path_part = (path_colored(path) + change_marker).ljust(width - len(cursor_position) - 2)
+        header = " " + path_part + cursor_position + " "
+        return termstr.TermStr(header).bg_color(termstr.Color.grey_30)
 
     def appearance_for(self, dimensions):
         width, height = dimensions

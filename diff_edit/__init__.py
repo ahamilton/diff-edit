@@ -60,8 +60,8 @@ def union_box_line(a_line, b_line):
 def highlight_str(line, bg_color, transparency):
     def blend_style(style):
         return termstr.CharStyle(
-            termstr.blend_color(style.fg_color, bg_color, transparency),
-            termstr.blend_color(style.bg_color, bg_color, transparency),
+            termstr.blend_color(style.fg_rgb_color, bg_color, transparency),
+            termstr.blend_color(style.bg_rgb_color, bg_color, transparency),
             is_bold=style.is_bold, is_italic=style.is_italic, is_underlined=style.is_underlined)
     return termstr.TermStr(line).transform_style(blend_style)
 
