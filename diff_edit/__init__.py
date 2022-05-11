@@ -83,10 +83,10 @@ def replace_part(a_str, start, end, part):
 @functools.lru_cache(maxsize=500)
 def highlight_modification(a_lines, b_lines, show_sub_highlights):
     blue = termstr.Color.blue
-    left_line = fill3.join("\n", tuple(colored_line[:len(line)]
-                                       for line, colored_line in zip(*a_lines)))
-    right_line = fill3.join("\n", tuple(colored_line[:len(line)]
-                                        for line, colored_line in zip(*b_lines)))
+    left_line = termstr.join("\n", tuple(colored_line[:len(line)]
+                                         for line, colored_line in zip(*a_lines)))
+    right_line = termstr.join("\n", tuple(colored_line[:len(line)]
+                                          for line, colored_line in zip(*b_lines)))
     if show_sub_highlights:
         diff = line_diff(left_line.data, right_line.data)
         for opcode, left_start, left_end, right_start, right_end in diff:

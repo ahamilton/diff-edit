@@ -6,13 +6,10 @@ import asyncio
 import contextlib
 import enum
 import functools
-import importlib
-import importlib.resources
 import os
 import string
 import sys
 
-import diff_edit
 import fill3
 import fill3.terminal as terminal
 import lscolors
@@ -22,40 +19,6 @@ import pygments.styles
 import termstr
 
 import cwcwidth
-
-
-def get_ls_color_codes():
-    with importlib.resources.open_text(diff_edit, "LS_COLORS.sh") as lscolors_file:
-        codes = lscolors_file.readline().strip()[len("LS_COLORS='"):-len("';")]
-        return lscolors._parse_ls_colors(codes)
-
-
-_LS_COLOR_CODES = get_ls_color_codes()
-
-
-def _charstyle_of_path(path):
-    color_code = lscolors.color_code_for_path(path, _LS_COLOR_CODES)
-    if color_code is None:
-        return termstr.CharStyle()
-    term_text = termstr.ESC + "[" + color_code + "m-"
-    return termstr.TermStr.from_term(term_text).style[0]
-
-
-@functools.lru_cache(maxsize=100)
-def path_colored(path):
-    char_style = _charstyle_of_path(path)
-    if path.startswith("./"):
-        path = path[2:]
-    dirname, basename = os.path.split(path)
-    if dirname == "":
-        return termstr.TermStr(basename, char_style)
-    else:
-        dirname = dirname + os.path.sep
-        dir_style = _charstyle_of_path(os.path.sep)
-        parts = [termstr.TermStr(part, dir_style) for part in dirname.split(os.path.sep)]
-        path_sep = termstr.TermStr(os.path.sep).fg_color(termstr.Color.grey_150)
-        dir_name = fill3.join(path_sep, parts)
-        return dir_name + termstr.TermStr(basename, char_style)
 
 
 @functools.lru_cache(maxsize=100)
@@ -97,11 +60,11 @@ def _syntax_highlight(text, lexer, style):
     default_bg_color = _parse_rgb(style.background_color)
     default_style = termstr.CharStyle(bg_color=default_bg_color)
     text = expandtabs(text)
-    text = fill3.join("", [termstr.TermStr(
+    text = termstr.join("", [termstr.TermStr(
         text, _char_style_for_token_type(token_type, default_bg_color, default_style))
                            for token_type, text in pygments.lex(text, lexer)])
     text_widget = fill3.Text(text, pad_char=termstr.TermStr(" ").bg_color(default_bg_color))
-    return fill3.join("\n", text_widget.text)
+    return termstr.join("\n", text_widget.text)
 
 
 @functools.lru_cache(maxsize=5000)
@@ -259,7 +222,7 @@ def wrap_text(words, width):
     coords = []
     for index, line in enumerate(_wrap_text_lines(words, width)):
         line = list(line)
-        content = fill3.join(" ", line)
+        content = termstr.join(" ", line)
         appearance.append(content.center(width))
         cursor = index * width + round((width - len(content)) / 2)
         for word in line:
@@ -895,9 +858,9 @@ class Editor:
         change_marker = "*" if is_changed else ""
         cursor_position = termstr.TermStr(
             f"Line {cursor_y+1} Column {cursor_x+1:<3}").fg_color(termstr.Color.grey_100)
-        path_part = (path_colored(path) + change_marker).ljust(width - len(cursor_position) - 2)
+        path_part = (lscolors.path_colored(path) + change_marker).ljust(width - len(cursor_position) - 2)
         header = " " + path_part + cursor_position + " "
-        return termstr.TermStr(header).bg_color(termstr.Color.grey_30)
+        return termstr.TermStr(header).bg_color(termstr.Color.grey_50)
 
     def appearance_for(self, dimensions):
         width, height = dimensions
