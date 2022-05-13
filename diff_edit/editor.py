@@ -98,14 +98,14 @@ class Text:
         return self.lines[line_index]
 
     def __setitem__(self, key, value):
-        if type(key) == int:
-            if len(expand_str(self.lines[key])) != self.max_line_length:
-                self.lines[key] = value
-                self._new_line(value)
-                return
-        self.lines[key] = value
-        with contextlib.suppress(AttributeError):
-            del self.max_line_length
+        if type(key) == int and \
+           len(expand_str(self.lines[key])) != self.max_line_length:
+            self.lines[key] = value
+            self._new_line(value)
+        else:
+            self.lines[key] = value
+            with contextlib.suppress(AttributeError):
+                del self.max_line_length
 
     def insert(self, index, line):
         self.lines.insert(index, line)
@@ -862,7 +862,8 @@ class Editor:
         change_marker = "*" if is_changed else ""
         cursor_position = termstr.TermStr(
             f"Line {cursor_y+1} Column {cursor_x+1:<3}").fg_color(termstr.Color.grey_100)
-        path_part = (lscolors.path_colored(path) + change_marker).ljust(width - len(cursor_position) - 2)
+        path_colored = lscolors.path_colored(path) + change_marker
+        path_part = path_colored.ljust(width - len(cursor_position) - 2)
         header = " " + path_part + cursor_position + " "
         return termstr.TermStr(header).bg_color(termstr.Color.grey_50)
 

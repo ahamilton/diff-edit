@@ -344,7 +344,7 @@ class DiffEditor:
                 continue
             color = colors[color_index % len(colors)]
             left_y = left_start - left_scroll + self.left_editor.parts_height + 1  # 1 for header
-            right_y = right_start - right_scroll + self.right_editor.parts_height + 1  # 1 for header
+            right_y = right_start - right_scroll + self.right_editor.parts_height + 1
             draw_connector(columns, color, left_y, right_y)
             for y in [left_y, right_y]:
                 if y <= 0:
