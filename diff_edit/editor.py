@@ -87,36 +87,40 @@ class Text:
     def __len__(self):
         return len(self.lines)
 
-    def __getitem__(self, line_index):
-        return self.lines[line_index]
-
-    @functools.lru_cache(maxsize=5000)
-    def _convert_line(self, line, max_line_length):
-        return expand_str(line).ljust(max_line_length)
-
-    def __setitem__(self, key, value):
-        if type(key) == int:
-            self._replace_lines(slice(key, key + 1), [value])
-        else:  # slice
-            self._replace_lines(key, value)
-
     @functools.cached_property
     def max_line_length(self):
         return max(len(expand_str(line)) for line in self.lines)
 
-    def _replace_lines(self, slice_, new_lines):
-        self.lines[slice_] = new_lines
+    def _new_line(self, line):
+        self.max_line_length = max(self.max_line_length, len(expand_str(line)))
+
+    def __getitem__(self, line_index):
+        return self.lines[line_index]
+
+    def __setitem__(self, key, value):
+        if type(key) == int:
+            if len(expand_str(self.lines[key])) != self.max_line_length:
+                self.lines[key] = value
+                self._new_line(value)
+                return
+        self.lines[key] = value
         with contextlib.suppress(AttributeError):
             del self.max_line_length
 
     def insert(self, index, line):
-        self._replace_lines(slice(index, index), [line])
+        self.lines.insert(index, line)
+        self._new_line(line)
 
     def append(self, line):
-        self.insert(len(self.lines), line)
+        self.lines.append(line)
+        self._new_line(line)
 
     def get_text(self):
         return "\n".join(self)
+
+    @functools.lru_cache(maxsize=5000)
+    def _convert_line(self, line, max_line_length):
+        return expand_str(line).ljust(max_line_length)
 
     def appearance(self):
         return [self._convert_line(line, self.max_line_length) for line in self.lines]
