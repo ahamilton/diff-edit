@@ -58,17 +58,6 @@ class TextWidgetTestCase(unittest.TestCase):
         text = editor.Text("a\tb\tc")
         self.assertEqual(text.appearance(), [termstr.TermStr("a       b       c")])
 
-    def test_expand_str_inverse(self):
-        self.assertEqual(editor.expand_str_inverse(""), [])
-        self.assertEqual(editor.expand_str_inverse("a"), [0])
-        self.assertEqual(editor.expand_str_inverse("a\tb"), [0, 1, 1, 1, 1, 1, 1, 1, 2])
-        self.assertEqual(editor.expand_str_inverse("aaaaaaaaaa\t"),
-                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 10, 10])
-        self.assertEqual(editor.expand_str_inverse("a\tb\tc"),
-                         [0, 1, 1, 1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 3, 3, 4])
-        self.assertEqual(editor.expand_str_inverse("♓"), [0, 0])
-        self.assertEqual(editor.expand_str_inverse("♓\tb"), [0, 0, 1, 1, 1, 1, 1, 1, 2])
-
 
 class WrapTextTestCase(unittest.TestCase):
 
@@ -339,6 +328,17 @@ class EditorTestCase(unittest.TestCase):
         self.editor.set_mark()
         self.editor.abort_command()
         self.assertEqual(self.editor.mark, None)
+
+    def test_expand_str_inverse(self):
+        self.assertEqual(editor.expand_str_inverse(""), [])
+        self.assertEqual(editor.expand_str_inverse("a"), [0])
+        self.assertEqual(editor.expand_str_inverse("a\tb"), [0, 1, 1, 1, 1, 1, 1, 1, 2])
+        self.assertEqual(editor.expand_str_inverse("aaaaaaaaaa\t"),
+                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 10, 10])
+        self.assertEqual(editor.expand_str_inverse("a\tb\tc"),
+                         [0, 1, 1, 1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 3, 3, 4])
+        self.assertEqual(editor.expand_str_inverse("♓"), [0, 0])
+        self.assertEqual(editor.expand_str_inverse("♓\tb"), [0, 0, 1, 1, 1, 1, 1, 1, 2])
 
 
 if __name__ == "__main__":

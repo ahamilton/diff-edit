@@ -391,45 +391,47 @@ class Editor:
             [(mark_y, mark_x), (self.cursor_y, self.cursor_x)])
         return (start_x, start_y), (end_x, end_y)
 
-    def add_highlights(self, appearance):
+    def _highlight_selection(self, appearance):
+        (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
+        screen_start_x = self.screen_x(start_x, start_y)
+        screen_end_x = self.screen_x(end_x, end_y)
         view_x, view_y = self.view_widget.position
-        result = appearance
+        start_y -= view_y
+        end_y -= view_y
+        if start_y == end_y:
+            appearance[start_y] = highlight_part(appearance[start_y], screen_start_x, screen_end_x)
+        else:
+            if 0 <= start_y < len(appearance):
+                appearance[start_y] = highlight_part(appearance[start_y], screen_start_x,
+                                                     len(appearance[start_y]))
+            for line_num in range(max(start_y+1, 0), min(end_y, self.last_height)):
+                if 0 <= line_num < len(appearance):
+                    appearance[line_num] = highlight_part(appearance[line_num], 0,
+                                                          len(appearance[line_num]))
+            if 0 <= end_y < len(appearance):
+                appearance[end_y] = highlight_part(appearance[end_y], 0, screen_end_x)
+
+    def _add_highlights(self, appearance):
+        view_x, view_y = self.view_widget.position
         if not self.is_editing:
-            return result
+            return appearance
         cursor_y = self.cursor_y - view_y
         if self.mark is None:
-            if 0 <= cursor_y < len(result):
-                result[cursor_y] = highlight_line(result[cursor_y])
+            if 0 <= cursor_y < len(appearance):
+                appearance[cursor_y] = highlight_line(appearance[cursor_y])
         else:
-            (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
-            screen_start_x = self.screen_x(start_x, start_y)
-            screen_end_x = self.screen_x(end_x, end_y)
-            start_y -= view_y
-            end_y -= view_y
-            if start_y == end_y:
-                result[start_y] = highlight_part(result[start_y], screen_start_x, screen_end_x)
-            else:
-                if 0 <= start_y < len(result):
-                    result[start_y] = highlight_part(result[start_y], screen_start_x,
-                                                     len(result[start_y]))
-                view_x, view_y = self.view_widget.position
-                for line_num in range(max(start_y+1, 0), min(end_y, self.last_height)):
-                    if 0 <= line_num < len(result):
-                        result[line_num] = highlight_part(result[line_num], 0,
-                                                          len(result[line_num]))
-                if 0 <= end_y < len(result):
-                    result[end_y] = highlight_part(result[end_y], 0, screen_end_x)
-        if self.cursor_x >= len(result[0]):
-            result = fill3.appearance_resize(result, (self.cursor_x+1, len(result)))
-        if 0 <= cursor_y < len(result):
-            cursor_line = result[cursor_y]
+            self._highlight_selection(appearance)
+        if self.cursor_x >= len(appearance[0]):
+            appearance = fill3.appearance_resize(appearance, (self.cursor_x+1, len(appearance)))
+        if 0 <= cursor_y < len(appearance):
+            cursor_line = appearance[cursor_y]
             screen_x = self.screen_x(self.cursor_x, self.cursor_y)
             screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"] else
                               self.screen_x(self.cursor_x + 1, self.cursor_y))
-            result[cursor_y] = (cursor_line[:screen_x] +
-                                termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
-                                cursor_line[screen_x_after:])
-        return result
+            appearance[cursor_y] = (cursor_line[:screen_x] +
+                                    termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
+                                    cursor_line[screen_x_after:])
+        return appearance
 
     def set_text(self, text):
         try:
@@ -437,7 +439,7 @@ class Editor:
         except pygments.util.ClassNotFound:  # No lexer for path
             self.text_widget = Text(text)
         self.decor_widget = Decor(self.text_widget,
-                                  lambda appearance: self.add_highlights(appearance))
+                                  lambda appearance: self._add_highlights(appearance))
         self.view_widget = fill3.View.from_widget(self.decor_widget)
         self.view_widget.portal.is_scroll_limited = True
         if not self.is_left_aligned:
@@ -817,9 +819,9 @@ class Editor:
             return
         if action := (Editor.KEY_MAP.get((self.previous_term_code, term_code))
                       or Editor.KEY_MAP.get(term_code)):
+            if action in Editor.CHANGE_ACTIONS:
+                self.add_to_history()
             try:
-                if action in Editor.CHANGE_ACTIONS:
-                    self.add_to_history()
                 action(self)
             except IndexError:
                 self.ring_bell()
