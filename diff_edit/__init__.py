@@ -111,11 +111,7 @@ def draw_connector(columns, color, left_y, right_y):
         left_corner, right_corner = "━", "━"
     for column, y, arrow, corner in [(left_arrows, left_y, "◂", left_corner),
                                      (right_arrows, right_y, "▸", right_corner)]:
-        if y <= 0:
-            pass
-        elif y >= height - 1:
-            pass
-        else:
+        if 0 < y < height - 1:
             column[y] = termstr.TermStr(arrow).fg_color(color)
             line[y] = union_box_line(corner, line[y])
     if 0 < left_y < height - 1 or 0 < right_y < height - 1:
