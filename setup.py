@@ -18,6 +18,6 @@ setup(name="diff-edit",
       entry_points={"console_scripts": ["diff-edit=diff_edit:main"]},
       install_requires=[
           "pygments==2.10.0", "docopt==0.6.2",
-          "termstr @ git+https://github.com/ahamilton/eris@v2022.05.11#subdirectory=termstr",
-          "fill3 @ git+https://github.com/ahamilton/eris@v2022.05.11#subdirectory=fill3",
-          "lscolors @ git+https://github.com/ahamilton/eris@v2022.05.11#subdirectory=lscolors"])
+          "termstr @ git+https://github.com/ahamilton/eris@v2022.05.26#subdirectory=termstr",
+          "fill3 @ git+https://github.com/ahamilton/eris@v2022.05.26#subdirectory=fill3",
+          "lscolors @ git+https://github.com/ahamilton/eris@v2022.05.26#subdirectory=lscolors"])

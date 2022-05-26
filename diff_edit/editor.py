@@ -443,7 +443,7 @@ class Editor:
         self.view_widget = fill3.View.from_widget(self.decor_widget)
         self.view_widget.portal.is_scroll_limited = True
         if not self.is_left_aligned:
-            self.view_widget.portal.is_left_aligned = False
+            self.view_widget.portal.x_alignment = fill3.Alignment.right
         self._cursor_x, self._cursor_y = 0, 0
         self.original_text = self.text_widget.lines.copy()
         self.history = []
