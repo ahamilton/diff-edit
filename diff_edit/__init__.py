@@ -165,7 +165,8 @@ class DiffEditor:
         with contextlib.suppress(AttributeError):
             del self.diff
 
-    def _highlight_lines(self, appearance, start, end, opcode, change_opcode):
+    @staticmethod
+    def _highlight_lines(appearance, start, end, opcode, change_opcode):
         if opcode == change_opcode:
             for index in range(start, end):
                 appearance[index] = highlight_str(appearance[index], (0, 200, 0), 0.6)

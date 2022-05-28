@@ -118,8 +118,9 @@ class Text:
     def get_text(self):
         return "\n".join(self)
 
+    @staticmethod
     @functools.lru_cache(maxsize=5000)
-    def _convert_line(self, line, max_line_length):
+    def _convert_line(line, max_line_length):
         return expand_str(line).ljust(max_line_length)
 
     def appearance(self):
