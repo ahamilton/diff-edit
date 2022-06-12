@@ -24,8 +24,8 @@ import cwcwidth
 @functools.lru_cache(maxsize=100)
 def highlight_str(line, bg_color, transparency=0.6):
     def blend_style(style):
-        return termstr.CharStyle(termstr.blend_color(style.fg_color, bg_color, transparency),
-                                 termstr.blend_color(style.bg_color, bg_color, transparency),
+        return termstr.CharStyle(termstr.blend_color(style.fg_rgb_color, bg_color, transparency),
+                                 termstr.blend_color(style.bg_rgb_color, bg_color, transparency),
                                  is_bold=style.is_bold, is_italic=style.is_italic,
                                  is_underlined=style.is_underlined)
     return termstr.TermStr(line).transform_style(blend_style)
@@ -275,6 +275,7 @@ class Parts:
         self.parts = [termstr.TermStr(text).fg_color(COLOR_MAP[line_type])
                       for line_type, text, line_num in self.lines]
         self.width, self.height = None, None
+        self.is_focused = True
         self.set_cursor()
 
     def set_cursor(self):
@@ -291,6 +292,11 @@ class Parts:
         x, y = self.editor.view_widget.portal.position
         self.editor.view_widget.portal.position = x, self.editor.cursor_y - 1
 
+    def escape_parts_browser(self):
+        self.editor.parts_widget = None
+        self.editor.is_editing = True
+        self.editor.center_cursor()
+
     def cursor_left(self):
         self._move_cursor(-1)
 
@@ -298,14 +304,15 @@ class Parts:
         self._move_cursor(1)
 
     def on_keyboard_input(self, term_code):
-        if term_code == terminal.ESC:
-            self.editor.parts_widget = None
-            self.editor.is_editing = True
-            self.editor.center_cursor()
-        elif term_code == terminal.LEFT:
-            self.cursor_left()
-        elif term_code == terminal.RIGHT:
-            self.cursor_right()
+        match term_code:
+            case terminal.ESC:
+                self.escape_parts_browser()
+            case terminal.DOWN:
+                self.escape_parts_browser()
+            case terminal.LEFT:
+                self.cursor_left()
+            case terminal.RIGHT:
+                self.cursor_right()
         fill3.APPEARANCE_CHANGED_EVENT.set()
 
     def appearance(self):
@@ -316,7 +323,8 @@ class Parts:
         if len(result) > height:
             appearance, coords = wrap_text(parts, width - 1)
             line_num = coords[self.cursor][0] // (width - 1)
-            appearance[line_num] = highlight_line(appearance[line_num])
+            if self.is_focused:
+                appearance[line_num] = highlight_line(appearance[line_num])
             view_widget = fill3.View.from_widget(fill3.Fixed(appearance))
             if line_num >= height:
                 x, y = view_widget.portal.position
@@ -324,8 +332,9 @@ class Parts:
                 view_widget.portal.limit_scroll(self.dimensions, (width, len(appearance)))
             result = view_widget.appearance_for(self.dimensions)
         else:
-            line_num = coords[self.cursor][0] // width
-            result[line_num] = highlight_line(result[line_num])
+            if self.is_focused:
+                line_num = coords[self.cursor][0] // width
+                result[line_num] = highlight_line(result[line_num])
         return result
 
 
@@ -853,10 +862,11 @@ class Editor:
 
     def on_mouse_input(self, term_code):
         action, flag, x, y = terminal.decode_mouse_input(term_code)
-        if action == terminal.MOUSE_PRESS:
-            self.on_mouse_press(x, y)
-        elif action == terminal.MOUSE_DRAG:
-            self.on_mouse_drag(x, y)
+        match action:
+            case terminal.MOUSE_PRESS:
+                self.on_mouse_press(x, y)
+            case terminal.MOUSE_DRAG:
+                self.on_mouse_drag(x, y)
         self.follow_cursor()
         fill3.APPEARANCE_CHANGED_EVENT.set()
 
@@ -871,14 +881,14 @@ class Editor:
         path_colored = lscolors.path_colored(path) + change_marker
         path_part = path_colored.ljust(width - len(cursor_position) - 2)
         header = " " + path_part + cursor_position + " "
-        return termstr.TermStr(header).bg_color(termstr.Color.grey_50)
+        return termstr.TermStr(header).bg_color(termstr.Color.grey_30)
 
     def appearance_for(self, dimensions):
         width, height = dimensions
         if self.parts_widget is None:
             parts_appearance = []
         else:
-            self.parts_widget.dimensions = width, height // 4
+            self.parts_widget.dimensions = width, height // 5
             parts_appearance = self.parts_widget.appearance()
         self.parts_height = len(parts_appearance)
         is_changed = self.text_widget.lines != self.original_text
@@ -918,10 +928,105 @@ class Editor:
                       tab_align, insert_tab, indent, dedent}
 
 
+class FileBrowser:
+
+    def __init__(self, paths):
+        self.parts = [self._path_colored(path) for path in paths]
+        self.cursor = 0
+
+    @staticmethod
+    def _path_colored(path):
+        return termstr.TermStr(os.path.basename(path), lscolors._charstyle_of_path(path))
+
+    def cursor_left(self):
+        self.cursor = (self.cursor - 1) % len(self.parts)
+
+    def cursor_right(self):
+        self.cursor = (self.cursor + 1) % len(self.parts)
+
+    def appearance(self):
+        width, height = self.dimensions
+        parts = self.parts.copy()
+        parts[self.cursor] = parts[self.cursor].invert()
+        result, coords = wrap_text(parts, width)
+        if len(result) > height:
+            appearance, coords = wrap_text(parts, width - 1)
+            line_num = coords[self.cursor][0] // (width - 1)
+            appearance[line_num] = highlight_line(appearance[line_num])
+            view_widget = fill3.View.from_widget(fill3.Fixed(appearance))
+            if line_num >= height:
+                x, y = view_widget.portal.position
+                view_widget.portal.position = x, line_num // height * height
+                view_widget.portal.limit_scroll(self.dimensions, (width, len(appearance)))
+            result = view_widget.appearance_for(self.dimensions)
+        else:
+            line_num = coords[self.cursor][0] // width
+            result[line_num] = highlight_line(result[line_num])
+        return result
+
+
+class IDE:
+
+    def __init__(self, paths):
+        self.paths = paths
+        self.file_browser = FileBrowser(paths)
+        self.is_browsing = False
+
+    @staticmethod
+    @functools.cache
+    def get_editor(path):
+        editor = Editor()
+        editor.load(path)
+        return editor
+
+    def current_editor(self):
+        return self.get_editor(self.paths[self.file_browser.cursor])
+
+    def open_parts_browser(self):
+        editor = self.current_editor()
+        if editor.parts_widget is None:
+            editor.show_parts_list()
+            editor.parts_widget.is_focused = False
+
+    def on_keyboard_input(self, term_code):
+        if self.is_browsing:
+            match term_code:
+                case terminal.DOWN:
+                    self.is_browsing = False
+                    self.current_editor().parts_widget.is_focused = True
+                case terminal.LEFT:
+                    self.file_browser.cursor_left()
+                    self.open_parts_browser()
+                case terminal.RIGHT:
+                    self.file_browser.cursor_right()
+                    self.open_parts_browser()
+                case terminal.ESC:
+                    self.is_browsing = False
+                    self.current_editor().parts_widget.escape_parts_browser()
+        elif term_code == terminal.UP and self.current_editor().parts_widget is not None:
+            self.is_browsing = True
+            self.current_editor().parts_widget.is_focused = False
+        else:
+            self.current_editor().on_keyboard_input(term_code)
+        fill3.APPEARANCE_CHANGED_EVENT.set()
+
+    def on_mouse_input(self, term_code):
+        self.current_editor().on_mouse_input(term_code)
+
+    def appearance_for(self, dimensions):
+        width, height = dimensions
+        if self.is_browsing:
+            self.file_browser.dimensions = width, height // 5
+            file_browser_appearance = self.file_browser.appearance()
+        else:
+            file_browser_appearance = []
+        return (file_browser_appearance +
+                self.current_editor().appearance_for((width, height-len(file_browser_appearance))))
+
+
 def main():
-    editor = Editor()
-    editor.load(sys.argv[1])
-    asyncio.run(fill3.tui("Editor", editor))
+    ide = IDE(sys.argv[1:])
+    asyncio.run(fill3.tui("IDE", ide))
 
 
 if __name__ == "__main__":
