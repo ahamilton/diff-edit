@@ -338,6 +338,14 @@ class Parts:
         return result
 
 
+def change_action(func):
+    def wrapper(self, *args, **kwargs):
+        result = func(self, *args, **kwargs)
+        self.mark = None
+        return result
+    return wrapper
+
+
 class Editor:
 
     TAB_SIZE = 4
@@ -472,6 +480,7 @@ class Editor:
             file_.write(self.text_widget.get_text())
         self.original_text = self.text_widget.lines.copy()
 
+    @change_action
     def backspace(self):
         if self.cursor_x == 0:
             if self.cursor_y != 0:
@@ -518,11 +527,13 @@ class Editor:
     def jump_to_end_of_line(self):
         self.cursor_x = len(self.text_widget.lines[self.cursor_y])
 
+    @change_action
     def open_line(self):
         line = self.text_widget[self.cursor_y]
         self.text_widget[self.cursor_y:self.cursor_y+1] = \
             [line[:self.cursor_x], line[self.cursor_x:]]
 
+    @change_action
     def enter(self):
         self.open_line()
         self.cursor_x, self.cursor_y = 0, self.cursor_y + 1
@@ -542,6 +553,7 @@ class Editor:
             self.clipboard = selection
             self.mark = None
 
+    @change_action
     def delete_selection(self):
         if self.mark is not None:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
@@ -552,6 +564,7 @@ class Editor:
             self.text_widget[start_y:end_y+1] = [new_line]
             self.cursor_x, self.cursor_y = start_x, start_y
 
+    @change_action
     def insert_text(self, text, is_overwriting=False):
         try:
             current_line = self.text_widget[self.cursor_y]
@@ -562,15 +575,18 @@ class Editor:
             self.text_widget.append(text)
         self.cursor_x += len(text)
 
+    @change_action
     def delete_character(self):
         self.cursor_right()
         self.backspace()
 
+    @change_action
     def delete_right(self):
         self.set_mark()
         self.next_word()
         self.delete_selection()
 
+    @change_action
     def paste_from_clipboard(self):
         if self.clipboard is not None:
             for line in self.clipboard[:-1]:
@@ -616,12 +632,14 @@ class Editor:
             self.cursor_left()
         self.cursor_right()
 
+    @change_action
     def delete_backward(self):
         self.set_mark()
         with contextlib.suppress(IndexError):
             self.previous_word()
         self.delete_selection()
 
+    @change_action
     def delete_line(self):
         empty_selection = self.text_widget[self.cursor_y][self.cursor_x:].strip() == ""
         self.set_mark()
@@ -639,6 +657,7 @@ class Editor:
             self.cursor_right()
         return self.cursor_x
 
+    @change_action
     def tab_align(self):
         if self.cursor_y == 0:
             return
@@ -651,6 +670,7 @@ class Editor:
         self.delete_selection()
         self.insert_text(" " * indent)
 
+    @change_action
     def insert_tab(self):
         self.insert_text("\t")
 
@@ -661,6 +681,7 @@ class Editor:
                 return index
         return 0
 
+    @change_action
     def comment_lines(self):
         if self.mark is None:
             if self.text_widget[self.cursor_y].strip() == "":
@@ -777,6 +798,7 @@ class Editor:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
             return range(start_y + (start_x > 0), end_y + 1 - (end_x == 0))
 
+    @change_action
     def indent(self):
         indent_ = " " * Editor.TAB_SIZE
         for line_num in self._work_lines():
@@ -787,6 +809,7 @@ class Editor:
             if self.cursor_y == line_num:
                 self.cursor_x += Editor.TAB_SIZE
 
+    @change_action
     def dedent(self):
         indent_ = " " * Editor.TAB_SIZE
         line_nums = self._work_lines()
@@ -832,7 +855,7 @@ class Editor:
             return
         if action := (Editor.KEY_MAP.get((self.previous_term_code, term_code))
                       or Editor.KEY_MAP.get(term_code)):
-            if action in Editor.CHANGE_ACTIONS:
+            if action.__name__  == "wrapper":
                 self.add_to_history()
             try:
                 action(self)
@@ -922,10 +945,6 @@ class Editor:
         (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: undo,
         terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command, terminal.INSERT: toggle_overwrite,
         (terminal.CTRL_C, ">"): indent, (terminal.CTRL_C, "<"): dedent}
-
-    CHANGE_ACTIONS = {backspace, open_line, enter, delete_selection, delete_character, delete_right,
-                      paste_from_clipboard, delete_backward, join_lines, comment_lines, delete_line,
-                      tab_align, insert_tab, indent, dedent}
 
 
 class FileBrowser:
