@@ -242,26 +242,28 @@ class Line(enum.Enum):
     endpoint = enum.auto()
 
 
-@functools.lru_cache(1)
+@functools.lru_cache(100)
 def parts_lines(source, lexer):
     cursor = 0
     line_num = 0
     line_lengths = [len(line) for line in source.splitlines(keepends=True)]
     result = [(Line.endpoint, "top", 0)]
-    for position, token_type, text in lexer.get_tokens_unprocessed(source):
-        while position >= cursor:
-            cursor += line_lengths[line_num]
-            line_num += 1
-        if token_type == pygments.token.Name.Class:
-            result.append((Line.class_, text, line_num - 1))
-        elif token_type in [pygments.token.Name.Function, pygments.token.Name.Function.Magic]:
-            result.append((Line.function, text, line_num - 1))
+    if lexer is None:
+        line_num = len(source.splitlines())
+    else:
+        for position, token_type, text in lexer.get_tokens_unprocessed(source):
+            while position >= cursor:
+                cursor += line_lengths[line_num]
+                line_num += 1
+            if token_type == pygments.token.Name.Class:
+                result.append((Line.class_, text, line_num - 1))
+            elif token_type in [pygments.token.Name.Function, pygments.token.Name.Function.Magic]:
+                result.append((Line.function, text, line_num - 1))
     result.append((Line.endpoint, "bottom", line_num - 1))
     return result
 
 
-COLOR_MAP = {Line.class_: termstr.Color.red,
-             Line.function: termstr.Color.green,
+COLOR_MAP = {Line.class_: termstr.Color.red, Line.function: termstr.Color.green,
              Line.endpoint: termstr.Color.white}
 
 
@@ -730,7 +732,8 @@ class Editor:
         fill3.SHUTDOWN_EVENT.set()
 
     def show_parts_list(self):
-        self.parts_widget = Parts(self, self.get_text(), self.text_widget.lexer)
+        lexer = getattr(self.text_widget, "lexer", None)
+        self.parts_widget = Parts(self, self.get_text(), lexer)
         self.is_editing = False
         self.mark = None
 
