@@ -346,7 +346,7 @@ def change_action(func):
     return wrapper
 
 
-class Editor:
+class TextEditor:
 
     TAB_SIZE = 4
     THEMES = [pygments.styles.get_style_by_name(style)
@@ -619,16 +619,16 @@ class Editor:
             return "\n"
 
     def next_word(self):
-        while self._current_character() not in Editor.WORD_CHARS:
+        while self._current_character() not in TextEditor.WORD_CHARS:
             self.cursor_right()
-        while self._current_character() in Editor.WORD_CHARS:
+        while self._current_character() in TextEditor.WORD_CHARS:
             self.cursor_right()
 
     def previous_word(self):
         self.cursor_left()
-        while self._current_character() not in Editor.WORD_CHARS:
+        while self._current_character() not in TextEditor.WORD_CHARS:
             self.cursor_left()
-        while self._current_character() in Editor.WORD_CHARS:
+        while self._current_character() in TextEditor.WORD_CHARS:
             self.cursor_left()
         self.cursor_right()
 
@@ -752,7 +752,7 @@ class Editor:
 
     def cycle_syntax_highlighting(self):
         self.theme_index += 1
-        if self.theme_index == len(Editor.THEMES):
+        if self.theme_index == len(TextEditor.THEMES):
             self.theme_index = 0
         theme = self.THEMES[self.theme_index]
         self.text_widget.theme = theme
@@ -800,18 +800,18 @@ class Editor:
 
     @change_action
     def indent(self):
-        indent_ = " " * Editor.TAB_SIZE
+        indent_ = " " * TextEditor.TAB_SIZE
         for line_num in self._work_lines():
             if self.text_widget[line_num].strip() == "":
                 self.text_widget[line_num] = ""
                 continue
             self.text_widget[line_num] = indent_ + self.text_widget[line_num]
             if self.cursor_y == line_num:
-                self.cursor_x += Editor.TAB_SIZE
+                self.cursor_x += TextEditor.TAB_SIZE
 
     @change_action
     def dedent(self):
-        indent_ = " " * Editor.TAB_SIZE
+        indent_ = " " * TextEditor.TAB_SIZE
         line_nums = self._work_lines()
         if not all(self.text_widget[line_num].startswith(indent_)
                    or self.text_widget[line_num].strip() == "" for line_num in line_nums):
@@ -819,11 +819,11 @@ class Editor:
             return
         for line_num in line_nums:
             if self.cursor_y == line_num:
-                self.cursor_x = max(self.cursor_x - Editor.TAB_SIZE, 0)
+                self.cursor_x = max(self.cursor_x - TextEditor.TAB_SIZE, 0)
             if self.text_widget[line_num].strip() == "":
                 self.text_widget[line_num] = ""
                 continue
-            self.text_widget[line_num] = self.text_widget[line_num][Editor.TAB_SIZE:]
+            self.text_widget[line_num] = self.text_widget[line_num][TextEditor.TAB_SIZE:]
 
     def abort_command(self):
         self.mark = None
@@ -853,8 +853,8 @@ class Editor:
         if self.parts_widget is not None:
             self.parts_widget.on_keyboard_input(term_code)
             return
-        if action := (Editor.KEY_MAP.get((self.previous_term_code, term_code))
-                      or Editor.KEY_MAP.get(term_code)):
+        if action := (TextEditor.KEY_MAP.get((self.previous_term_code, term_code))
+                      or TextEditor.KEY_MAP.get(term_code)):
             if action.__name__  == "wrapper":
                 self.add_to_history()
             try:
@@ -984,7 +984,7 @@ class FileBrowser:
         return result
 
 
-class IDE:
+class TextFilesEditor:
 
     def __init__(self, paths):
         self.paths = paths
@@ -994,7 +994,7 @@ class IDE:
     @staticmethod
     @functools.cache
     def get_editor(path):
-        editor = Editor()
+        editor = TextEditor()
         editor.load(path)
         return editor
 
@@ -1044,8 +1044,8 @@ class IDE:
 
 
 def main():
-    ide = IDE(sys.argv[1:])
-    asyncio.run(fill3.tui("IDE", ide))
+    editor = TextFilesEditor(sys.argv[1:])
+    asyncio.run(fill3.tui("Text Editor", editor))
 
 
 if __name__ == "__main__":

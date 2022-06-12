@@ -140,10 +140,10 @@ def overlay_list(bg_list, fg_list, index):
 class DiffEditor:
 
     def __init__(self, left_path, right_path):
-        self.left_editor = editor.Editor(is_left_aligned=False)
+        self.left_editor = editor.TextEditor(is_left_aligned=False)
         self.left_editor.load(left_path)
         self.left_editor.view_widget.is_left_scrollbar = True
-        self.right_editor = editor.Editor()
+        self.right_editor = editor.TextEditor()
         self.right_editor.load(right_path)
         self.show_sub_highlights = True
         self.previous_term_code = None
@@ -389,7 +389,7 @@ def check_arguments():
 def main():
     path_a, path_b = check_arguments()
     if path_b is None:
-        editor_ = editor.Editor(path_a)
+        editor_ = editor.TextEditor(path_a)
         editor_.load(path_a)
     else:
         editor_ = DiffEditor(path_a, path_b)

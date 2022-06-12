@@ -90,10 +90,10 @@ class ExpandTabsTestCase(unittest.TestCase):
         self.assertEqual(editor.expandtabs("c\na♓\tb"), "c\na♓     b")
 
 
-class EditorTestCase(unittest.TestCase):
+class TextEditorTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.editor = editor.Editor()
+        self.editor = editor.TextEditor()
 
     def _assert_editor(self, expected_text, expected_cursor_position):
         cursor_x, cursor_y = expected_cursor_position
