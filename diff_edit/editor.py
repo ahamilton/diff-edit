@@ -431,11 +431,22 @@ class TextEditor:
             if 0 <= end_y < len(appearance):
                 appearance[end_y] = highlight_part(appearance[end_y], 0, screen_end_x)
 
+    def _highlight_cursor(self, appearance, cursor_y):
+        cursor_line = appearance[cursor_y]
+        screen_x = self.screen_x(self.cursor_x, self.cursor_y)
+        screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"] else
+                          self.screen_x(self.cursor_x + 1, self.cursor_y))
+        appearance[cursor_y] = (cursor_line[:screen_x] +
+                                termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
+                                cursor_line[screen_x_after:])
+
     def _add_highlights(self, appearance):
         view_x, view_y = self.view_widget.position
+        cursor_y = self.cursor_y - view_y
+        if 0 <= cursor_y < len(appearance):
+            self._highlight_cursor(appearance, cursor_y)
         if not self.is_editing:
             return appearance
-        cursor_y = self.cursor_y - view_y
         if self.mark is None:
             if 0 <= cursor_y < len(appearance):
                 appearance[cursor_y] = highlight_line(appearance[cursor_y])
@@ -443,14 +454,6 @@ class TextEditor:
             self._highlight_selection(appearance)
         if self.cursor_x >= len(appearance[0]):
             appearance = fill3.appearance_resize(appearance, (self.cursor_x+1, len(appearance)))
-        if 0 <= cursor_y < len(appearance):
-            cursor_line = appearance[cursor_y]
-            screen_x = self.screen_x(self.cursor_x, self.cursor_y)
-            screen_x_after = (screen_x + 1 if self._current_character() in ["\t", "\n"] else
-                              self.screen_x(self.cursor_x + 1, self.cursor_y))
-            appearance[cursor_y] = (cursor_line[:screen_x] +
-                                    termstr.TermStr(cursor_line[screen_x:screen_x_after]).invert() +
-                                    cursor_line[screen_x_after:])
         return appearance
 
     def set_text(self, text):
@@ -855,7 +858,7 @@ class TextEditor:
             return
         if action := (TextEditor.KEY_MAP.get((self.previous_term_code, term_code))
                       or TextEditor.KEY_MAP.get(term_code)):
-            if action.__name__  == "wrapper":
+            if action.__name__ == "wrapper":
                 self.add_to_history()
             try:
                 action(self)
@@ -1039,8 +1042,8 @@ class TextFilesEditor:
             file_browser_appearance = self.file_browser.appearance()
         else:
             file_browser_appearance = []
-        return (file_browser_appearance +
-                self.current_editor().appearance_for((width, height-len(file_browser_appearance))))
+        editor_dimensions = width, height - len(file_browser_appearance)
+        return file_browser_appearance + self.current_editor().appearance_for(editor_dimensions)
 
 
 def main():
