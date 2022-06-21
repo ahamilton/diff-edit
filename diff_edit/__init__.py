@@ -8,11 +8,15 @@ Edit two files side by side, showing differences.
 
 
 import asyncio
+import atexit
 import contextlib
 import difflib
 import functools
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 
 import docopt
 import fill3
@@ -29,6 +33,7 @@ PROJECT_NAME = "diff-edit"
 USAGE = f"""
 Usage:
   {PROJECT_NAME} <file-a> [<file-b>]
+  {PROJECT_NAME} --git <file-a>
   {PROJECT_NAME} -h | --help
   {PROJECT_NAME} --version
 
@@ -155,6 +160,17 @@ class DiffEditor:
         self.right_view = self.right_editor.view_widget
         self.right_editor.is_editing = False
         self.editors = [self.left_editor, self.right_editor]
+
+    @classmethod
+    def from_git(cls, path):
+        temp_dir = tempfile.mkdtemp()
+        atexit.register(lambda: shutil.rmtree(temp_dir))
+        temp_path = os.path.join(temp_dir, os.path.basename(path))
+        process = subprocess.run(["git", "checkout-index", "--temp", path],
+                                 check=True, capture_output=True)
+        checkout_path, _ = process.stdout.decode("utf-8").split()
+        shutil.move(checkout_path, temp_path)
+        return cls(path, temp_path)
 
     @functools.cached_property
     def diff(self):
@@ -383,14 +399,17 @@ def check_arguments():
         if path is not None and not os.path.isfile(path):
             print("File does not exist:", path)
             sys.exit(1)
-    return arguments["<file-a>"], arguments["<file-b>"]
+    return arguments["<file-a>"], arguments["<file-b>"], arguments["--git"]
 
 
 def main():
-    path_a, path_b = check_arguments()
+    path_a, path_b, is_git_mode = check_arguments()
     if path_b is None:
-        editor_ = editor.TextEditor(path_a)
-        editor_.load(path_a)
+        if is_git_mode:
+            editor_ = DiffEditor.from_git(path_a)
+        else:
+            editor_ = editor.TextEditor(path_a)
+            editor_.load(path_a)
     else:
         editor_ = DiffEditor(path_a, path_b)
     asyncio.run(fill3.tui(PROJECT_NAME, editor_))
