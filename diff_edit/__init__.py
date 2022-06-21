@@ -327,8 +327,9 @@ class DiffEditor:
                       or self.KEY_MAP.get(term_code)):
             action(self)
         else:
-            self.editors[0].on_keyboard_input(term_code)
-            self.diff_changed()
+            is_content_changed = self.editors[0].on_keyboard_input(term_code)
+            if is_content_changed:
+                self.diff_changed()
         self.previous_term_code = term_code
         fill3.APPEARANCE_CHANGED_EVENT.set()
 

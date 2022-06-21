@@ -780,6 +780,7 @@ class TextEditor:
         self.history.append((self.text_widget.lines.copy(), self._cursor_x, self._cursor_y))
         self.history_position = len(self.history)
 
+    @change_action
     def undo(self):
         if self.history_position == 0:
             self.ring_bell()
@@ -856,10 +857,13 @@ class TextEditor:
         if self.parts_widget is not None:
             self.parts_widget.on_keyboard_input(term_code)
             return
+        is_content_changed = False
         if action := (TextEditor.KEY_MAP.get((self.previous_term_code, term_code))
                       or TextEditor.KEY_MAP.get(term_code)):
             if action.__name__ == "wrapper":
-                self.add_to_history()
+                if action != TextEditor.undo:
+                    self.add_to_history()
+                is_content_changed = True
             try:
                 action(self)
             except IndexError:
@@ -867,9 +871,11 @@ class TextEditor:
         elif not (len(term_code) == 1 and ord(term_code) < 32):
             self.add_to_history()
             self.insert_text(term_code, is_overwriting=self.is_overwriting)
+            is_content_changed = True
         self.previous_term_code = term_code
         self.follow_cursor()
         fill3.APPEARANCE_CHANGED_EVENT.set()
+        return is_content_changed
 
     def scroll(self, dx, dy):
         view_x, view_y = self.scroll_position
