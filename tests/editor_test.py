@@ -142,7 +142,6 @@ class TextEditorTestCase(unittest.TestCase):
         self.editor.set_mark()
         self.editor.cursor_down()
         self._assert_change(self.editor.indent, "    a\nb\nc", (0, 1))
-        self.assertIsNone(self.editor.mark)
         self._set_editor("a\nb\nc", (1, 0))
         self.editor.set_mark()
         self.editor.cursor_left()

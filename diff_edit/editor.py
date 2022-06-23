@@ -82,6 +82,7 @@ class Text:
         lines = [""] if text == "" else text.splitlines()
         if text.endswith("\n"):
             lines.append("")
+        self.version = 0
         self[:] = lines
 
     def __len__(self):
@@ -93,6 +94,7 @@ class Text:
 
     def _new_line(self, line):
         self.max_line_length = max(self.max_line_length, len(expand_str(line)))
+        self.version += 1
 
     def __getitem__(self, line_index):
         return self.lines[line_index]
@@ -106,6 +108,7 @@ class Text:
             self.lines[key] = value
             with contextlib.suppress(AttributeError):
                 del self.max_line_length
+            self.version += 1
 
     def insert(self, index, line):
         self.lines.insert(index, line)
@@ -338,14 +341,6 @@ class Parts:
         return result
 
 
-def change_action(func):
-    def wrapper(self, *args, **kwargs):
-        result = func(self, *args, **kwargs)
-        self.mark = None
-        return result
-    return wrapper
-
-
 class TextEditor:
 
     TAB_SIZE = 4
@@ -483,7 +478,6 @@ class TextEditor:
             file_.write(self.text_widget.get_text())
         self.original_text = self.text_widget.lines.copy()
 
-    @change_action
     def backspace(self):
         if self.cursor_x == 0:
             if self.cursor_y != 0:
@@ -530,13 +524,11 @@ class TextEditor:
     def jump_to_end_of_line(self):
         self.cursor_x = len(self.text_widget.lines[self.cursor_y])
 
-    @change_action
     def open_line(self):
         line = self.text_widget[self.cursor_y]
         self.text_widget[self.cursor_y:self.cursor_y+1] = \
             [line[:self.cursor_x], line[self.cursor_x:]]
 
-    @change_action
     def enter(self):
         self.open_line()
         self.cursor_x, self.cursor_y = 0, self.cursor_y + 1
@@ -556,7 +548,6 @@ class TextEditor:
             self.clipboard = selection
             self.mark = None
 
-    @change_action
     def delete_selection(self):
         if self.mark is not None:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
@@ -567,7 +558,6 @@ class TextEditor:
             self.text_widget[start_y:end_y+1] = [new_line]
             self.cursor_x, self.cursor_y = start_x, start_y
 
-    @change_action
     def insert_text(self, text, is_overwriting=False):
         try:
             current_line = self.text_widget[self.cursor_y]
@@ -578,18 +568,15 @@ class TextEditor:
             self.text_widget.append(text)
         self.cursor_x += len(text)
 
-    @change_action
     def delete_character(self):
         self.cursor_right()
         self.backspace()
 
-    @change_action
     def delete_right(self):
         self.set_mark()
         self.next_word()
         self.delete_selection()
 
-    @change_action
     def paste_from_clipboard(self):
         if self.clipboard is not None:
             for line in self.clipboard[:-1]:
@@ -635,14 +622,12 @@ class TextEditor:
             self.cursor_left()
         self.cursor_right()
 
-    @change_action
     def delete_backward(self):
         self.set_mark()
         with contextlib.suppress(IndexError):
             self.previous_word()
         self.delete_selection()
 
-    @change_action
     def delete_line(self):
         empty_selection = self.text_widget[self.cursor_y][self.cursor_x:].strip() == ""
         self.set_mark()
@@ -660,7 +645,6 @@ class TextEditor:
             self.cursor_right()
         return self.cursor_x
 
-    @change_action
     def tab_align(self):
         if self.cursor_y == 0:
             return
@@ -673,7 +657,6 @@ class TextEditor:
         self.delete_selection()
         self.insert_text(" " * indent)
 
-    @change_action
     def insert_tab(self):
         self.insert_text("\t")
 
@@ -684,7 +667,6 @@ class TextEditor:
                 return index
         return 0
 
-    @change_action
     def comment_lines(self):
         if self.mark is None:
             if self.text_widget[self.cursor_y].strip() == "":
@@ -774,13 +756,17 @@ class TextEditor:
         if "unittest" not in sys.modules:
             print("\a", end="")
 
-    def add_to_history(self):
+    def add_to_history(self, state=None):
+        if state is None:
+            lines = self.text_widget.lines.copy()
+            cursor_x, cursor_y = self._cursor_x, self._cursor_y
+        else:
+            lines, cursor_x, cursor_y = state
         if self.history_position < len(self.history):
             self.history.extend(reversed(self.history[self.history_position:-1]))
-        self.history.append((self.text_widget.lines.copy(), self._cursor_x, self._cursor_y))
+        self.history.append((lines, cursor_x, cursor_y))
         self.history_position = len(self.history)
 
-    @change_action
     def undo(self):
         if self.history_position == 0:
             self.ring_bell()
@@ -802,7 +788,6 @@ class TextEditor:
             (start_x, start_y), (end_x, end_y) = self.get_selection_interval()
             return range(start_y + (start_x > 0), end_y + 1 - (end_x == 0))
 
-    @change_action
     def indent(self):
         indent_ = " " * TextEditor.TAB_SIZE
         for line_num in self._work_lines():
@@ -813,7 +798,6 @@ class TextEditor:
             if self.cursor_y == line_num:
                 self.cursor_x += TextEditor.TAB_SIZE
 
-    @change_action
     def dedent(self):
         indent_ = " " * TextEditor.TAB_SIZE
         line_nums = self._work_lines()
@@ -857,25 +841,23 @@ class TextEditor:
         if self.parts_widget is not None:
             self.parts_widget.on_keyboard_input(term_code)
             return
-        is_content_changed = False
+        old_version = self.text_widget.version
+        lines_before = self.text_widget.lines.copy()
+        cursor_x_before, cursor_y_before = self._cursor_x, self._cursor_y
         if action := (TextEditor.KEY_MAP.get((self.previous_term_code, term_code))
                       or TextEditor.KEY_MAP.get(term_code)):
-            if action.__name__ == "wrapper":
-                if action != TextEditor.undo:
-                    self.add_to_history()
-                is_content_changed = True
             try:
                 action(self)
             except IndexError:
                 self.ring_bell()
         elif not (len(term_code) == 1 and ord(term_code) < 32):
-            self.add_to_history()
             self.insert_text(term_code, is_overwriting=self.is_overwriting)
-            is_content_changed = True
+        if self.text_widget.version != old_version and action != TextEditor.undo:
+            self.add_to_history((lines_before, cursor_x_before, cursor_y_before))
+            self.mark = None
         self.previous_term_code = term_code
         self.follow_cursor()
         fill3.APPEARANCE_CHANGED_EVENT.set()
-        return is_content_changed
 
     def scroll(self, dx, dy):
         view_x, view_y = self.scroll_position
