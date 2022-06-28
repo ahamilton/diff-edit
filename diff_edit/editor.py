@@ -45,10 +45,9 @@ def is_bright_theme(theme):
 
 
 def highlight_line(line, theme=None):
-    if theme is not None and is_bright_theme(theme):
-        return highlight_str(line, termstr.Color.black, 0.8)
-    else:
-        return highlight_str(line, termstr.Color.white, 0.8)
+    blend_color = (termstr.Color.black if theme is not None and is_bright_theme(theme)
+                   else termstr.Color.white)
+    return highlight_str(line, blend_color, 0.8)
 
 
 NATIVE_STYLE = pygments.styles.get_style_by_name("paraiso-dark")
