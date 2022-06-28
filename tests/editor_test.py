@@ -72,12 +72,15 @@ class PartsListTestCase(unittest.TestCase):
 
     def test_parts_lines(self):
         python_lexer = pygments.lexers.python.PythonLexer()
-        self.assertEqual(editor.parts_lines("class A:\n    pass", python_lexer),
-                         [(editor.Line.endpoint, "top", 0), (editor.Line.class_, "A", 0),
-                          (editor.Line.endpoint, "bottom", 1)])
-        self.assertEqual(editor.parts_lines("\ndef B:", python_lexer),
-                         [(editor.Line.endpoint, "top", 0), (editor.Line.function, "B", 1),
-                          (editor.Line.endpoint, "bottom", 1)])
+        theme = pygments.styles.get_style_by_name("paraiso-dark")
+        class_charstyle = editor.char_style_for_token_type(pygments.token.Name.Class, theme)
+        self.assertEqual(editor.parts_lines("class A:\n    pass", python_lexer, theme),
+                         [(termstr.TermStr("top"), 0), (termstr.TermStr("A", class_charstyle), 0),
+                          (termstr.TermStr("bottom"), 1)])
+        func_charstyle = editor.char_style_for_token_type(pygments.token.Name.Function, theme)
+        self.assertEqual(editor.parts_lines("\ndef B:", python_lexer, theme),
+                         [(termstr.TermStr("top"), 0), (termstr.TermStr("B", func_charstyle), 1),
+                          (termstr.TermStr("bottom"), 1)])
 
 
 class ExpandTabsTestCase(unittest.TestCase):

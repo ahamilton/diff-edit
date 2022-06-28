@@ -15,6 +15,7 @@ import fill3.terminal as terminal
 import lscolors
 import pygments
 import pygments.lexers
+import pygments.lexers.special
 import pygments.styles
 import termstr
 
@@ -38,32 +39,35 @@ def highlight_line(line):
 NATIVE_STYLE = pygments.styles.get_style_by_name("paraiso-dark")
 
 
-def _syntax_highlight(text, lexer, style):
-    @functools.lru_cache(maxsize=500)
-    def _parse_rgb(hex_rgb):
-        if hex_rgb.startswith("#"):
-            hex_rgb = hex_rgb[1:]
-        return tuple(int("0x" + hex_rgb[index:index+2], base=16) for index in [0, 2, 4])
+@functools.lru_cache(maxsize=500)
+def parse_rgb(hex_rgb):
+    if hex_rgb.startswith("#"):
+        hex_rgb = hex_rgb[1:]
+    return tuple(int("0x" + hex_rgb[index:index+2], base=16) for index in [0, 2, 4])
 
-    @functools.lru_cache(maxsize=500)
-    def _char_style_for_token_type(token_type, default_bg_color, default_style):
-        try:
-            token_style = style.style_for_token(token_type)
-        except KeyError:
-            return default_style
-        fg_color = (termstr.Color.black if token_style["color"] is None
-                    else _parse_rgb(token_style["color"]))
-        bg_color = (default_bg_color if token_style["bgcolor"] is None
-                    else _parse_rgb(token_style["bgcolor"]))
-        return termstr.CharStyle(fg_color, bg_color, token_style["bold"], token_style["italic"],
-                                 token_style["underline"])
-    default_bg_color = _parse_rgb(style.background_color)
+
+@functools.lru_cache(maxsize=500)
+def char_style_for_token_type(token_type, style):
+    default_bg_color = parse_rgb(style.background_color)
     default_style = termstr.CharStyle(bg_color=default_bg_color)
+    try:
+        token_style = style.style_for_token(token_type)
+    except KeyError:
+        return default_style
+    fg_color = (termstr.Color.black if token_style["color"] is None
+                else parse_rgb(token_style["color"]))
+    bg_color = (default_bg_color if token_style["bgcolor"] is None
+                else parse_rgb(token_style["bgcolor"]))
+    return termstr.CharStyle(fg_color, bg_color, token_style["bold"], token_style["italic"],
+                             token_style["underline"])
+
+
+def syntax_highlight(text, lexer, style):
     text = expandtabs(text)
-    text = termstr.join("", [termstr.TermStr(
-        text, _char_style_for_token_type(token_type, default_bg_color, default_style))
-                           for token_type, text in pygments.lex(text, lexer)])
-    text_widget = fill3.Text(text, pad_char=termstr.TermStr(" ").bg_color(default_bg_color))
+    text = termstr.join("", [termstr.TermStr(text, char_style_for_token_type(token_type, style))
+                             for token_type, text in pygments.lex(text, lexer)])
+    bg_color = parse_rgb(style.background_color)
+    text_widget = fill3.Text(text, pad_char=termstr.TermStr(" ").bg_color(bg_color))
     return termstr.join("\n", text_widget.text)
 
 
@@ -75,15 +79,12 @@ def expand_str(str_):
 
 class Text:
 
-    def __init__(self, text, padding_char=" "):
-        self.padding_char = padding_char
-        self.lines = []
-        self.max_line_length = None
+    def __init__(self, text):
         lines = [""] if text == "" else text.splitlines()
         if text.endswith("\n"):
             lines.append("")
         self.version = 0
-        self[:] = lines
+        self.lines = lines
 
     def __len__(self):
         return len(self.lines)
@@ -141,25 +142,21 @@ class Text:
 class Code(Text):
 
     def __init__(self, text, path, theme=NATIVE_STYLE):
-        self.lexer = pygments.lexers.get_lexer_for_filename(path, text)
+        try:
+            self.lexer = pygments.lexers.get_lexer_for_filename(path, text)
+        except pygments.util.ClassNotFound:
+            self.lexer = pygments.lexers.special.TextLexer()
         self.theme = theme
-        padding_char = None
-        Text.__init__(self, text, padding_char)
+        Text.__init__(self, text)
 
     @functools.lru_cache(maxsize=5000)
     def _convert_line_themed(self, line, max_line_length, theme):
-        if self.padding_char is None:
-            self.padding_char = (" " if self.theme is None
-                                 else _syntax_highlight(" ", self.lexer, self.theme))
-        highlighted_line = (termstr.TermStr(line) if theme is None
-                            else _syntax_highlight(line, self.lexer, theme))
-        return highlighted_line.ljust(max_line_length, fillchar=self.padding_char)
+        padding_char = syntax_highlight(" ", self.lexer, self.theme)
+        highlighted_line = syntax_highlight(line, self.lexer, theme)
+        return highlighted_line.ljust(max_line_length, fillchar=padding_char)
 
     def _convert_line(self, line, max_line_length):
         return self._convert_line_themed(line, max_line_length, self.theme)
-
-    def syntax_highlight_all(self):
-        self.padding_char = None
 
 
 class Decor:
@@ -225,13 +222,13 @@ def _wrap_text_lines(words, width):
     yield words[first_word:]
 
 
-def wrap_text(words, width):
+def wrap_text(words, width, pad_char=" "):
     appearance = []
     coords = []
     for index, line in enumerate(_wrap_text_lines(words, width)):
         line = list(line)
-        content = termstr.join(" ", line)
-        appearance.append(content.center(width))
+        content = termstr.join(pad_char, line)
+        appearance.append(content.center(width, pad_char))
         cursor = index * width + round((width - len(content)) / 2)
         for word in line:
             coords.append((cursor, cursor + len(word)))
@@ -239,18 +236,15 @@ def wrap_text(words, width):
     return appearance, coords
 
 
-class Line(enum.Enum):
-    class_ = enum.auto()
-    function = enum.auto()
-    endpoint = enum.auto()
-
-
 @functools.lru_cache(100)
-def parts_lines(source, lexer):
+def parts_lines(source, lexer, theme):
     cursor = 0
     line_num = 0
     line_lengths = [len(line) for line in source.splitlines(keepends=True)]
-    result = [(Line.endpoint, "top", 0)]
+    white_style = termstr.CharStyle(fg_color=termstr.Color.white)
+    result = [(termstr.TermStr("top", white_style), 0)]
+    token_types = {pygments.token.Name.Class, pygments.token.Name.Function,
+                   pygments.token.Name.Function.Magic}
     if lexer is None:
         line_num = len(source.splitlines())
     else:
@@ -258,31 +252,26 @@ def parts_lines(source, lexer):
             while position >= cursor:
                 cursor += line_lengths[line_num]
                 line_num += 1
-            if token_type == pygments.token.Name.Class:
-                result.append((Line.class_, text, line_num - 1))
-            elif token_type in [pygments.token.Name.Function, pygments.token.Name.Function.Magic]:
-                result.append((Line.function, text, line_num - 1))
-    result.append((Line.endpoint, "bottom", line_num - 1))
+            if token_type in token_types:
+                char_style = char_style_for_token_type(token_type, theme)
+                result.append((termstr.TermStr(text, char_style), line_num - 1))
+    result.append((termstr.TermStr("bottom", white_style), line_num - 1))
     return result
-
-
-COLOR_MAP = {Line.class_: termstr.Color.red, Line.function: termstr.Color.green,
-             Line.endpoint: termstr.Color.white}
 
 
 class Parts:
 
     def __init__(self, editor, source, lexer):
         self.editor = editor
-        self.lines = parts_lines(source, lexer)
-        self.parts = [termstr.TermStr(text).fg_color(COLOR_MAP[line_type])
-                      for line_type, text, line_num in self.lines]
+        self.source = source
+        self.lexer = lexer
+        self.lines = parts_lines(source, lexer, editor.text_widget.theme)
         self.width, self.height = None, None
         self.is_focused = True
         self.set_cursor()
 
     def set_cursor(self):
-        for index, (line_type, text, line_num) in enumerate(self.lines):
+        for index, (text, line_num) in enumerate(self.lines):
             if line_num > self.editor.cursor_y:
                 self.cursor = index - 1
                 break
@@ -290,8 +279,8 @@ class Parts:
             self.cursor = len(self.lines) - 1
 
     def _move_cursor(self, delta):
-        self.cursor = (self.cursor + delta) % len(self.parts)
-        self.editor.cursor_x, self.editor.cursor_y = 0, self.lines[self.cursor][2]
+        self.cursor = (self.cursor + delta) % len(self.lines)
+        self.editor.cursor_x, self.editor.cursor_y = 0, self.lines[self.cursor][1]
         x, y = self.editor.view_widget.portal.position
         self.editor.view_widget.portal.position = x, self.editor.cursor_y - 1
 
@@ -320,11 +309,14 @@ class Parts:
 
     def appearance(self):
         width, height = self.dimensions
-        parts = self.parts.copy()
+        lines = parts_lines(self.source, self.lexer, self.editor.text_widget.theme)
+        parts = [text for text, line_num in lines]
         parts[self.cursor] = parts[self.cursor].invert()
-        result, coords = wrap_text(parts, width)
+        pad_char = syntax_highlight(" ", self.editor.text_widget.lexer,
+                                    self.editor.text_widget.theme)
+        result, coords = wrap_text(parts, width, pad_char)
         if len(result) > height:
-            appearance, coords = wrap_text(parts, width - 1)
+            appearance, coords = wrap_text(parts, width - 1, pad_char)
             line_num = coords[self.cursor][0] // (width - 1)
             if self.is_focused:
                 appearance[line_num] = highlight_line(appearance[line_num])
@@ -338,6 +330,9 @@ class Parts:
             if self.is_focused:
                 line_num = coords[self.cursor][0] // width
                 result[line_num] = highlight_line(result[line_num])
+        fg_color = termstr.Color.grey_100
+        bg_color = parse_rgb(self.editor.text_widget.theme.background_color)
+        result.append(termstr.TermStr("─").bg_color(bg_color).fg_color(fg_color) * width)
         return result
 
 
@@ -345,7 +340,8 @@ class TextEditor:
 
     TAB_SIZE = 4
     THEMES = [pygments.styles.get_style_by_name(style)
-              for style in ["monokai", "fruity", "native"]] + [None]
+              for style in ["material", "monokai", "fruity", "native", "inkpot", "solarized-light",
+                             "manni", "gruvbox-light", "perldoc", "zenburn",  "friendly",]]
 
     def __init__(self, text="", path="Untitled", is_left_aligned=True):
         self.path = os.path.normpath(path)
@@ -452,10 +448,7 @@ class TextEditor:
         return appearance
 
     def set_text(self, text):
-        try:
-            self.text_widget = Code(text, self.path)
-        except pygments.util.ClassNotFound:  # No lexer for path
-            self.text_widget = Text(text)
+        self.text_widget = Code(text, self.path)
         self.decor_widget = Decor(self.text_widget,
                                   lambda appearance: self._add_highlights(appearance))
         self.view_widget = fill3.View.from_widget(self.decor_widget)
@@ -727,21 +720,14 @@ class TextEditor:
         self.set_mark()
         self.jump_to_block_start()
 
-    def syntax_highlight_all(self):
-        self.text_widget.syntax_highlight_all()
-
     def center_cursor(self):
         view_x, view_y = self.view_widget.position
         new_y = max(0, self.cursor_y - self.last_height // 2)
         self.view_widget.position = view_x, new_y
 
     def cycle_syntax_highlighting(self):
-        self.theme_index += 1
-        if self.theme_index == len(TextEditor.THEMES):
-            self.theme_index = 0
-        theme = self.THEMES[self.theme_index]
-        self.text_widget.theme = theme
-        self.text_widget.syntax_highlight_all()
+        self.theme_index = (self.theme_index + 1) % len(TextEditor.THEMES)
+        self.text_widget.theme = self.THEMES[self.theme_index]
 
     def quit(self):
         fill3.SHUTDOWN_EVENT.set()
@@ -929,10 +915,10 @@ class TextEditor:
         terminal.ALT_b: previous_word, terminal.CTRL_LEFT: previous_word,
         terminal.ALT_LEFT: previous_word, terminal.ALT_BACKSPACE: delete_backward,
         terminal.ALT_CARROT: join_lines, terminal.ALT_h: highlight_block,
-        terminal.ALT_H: highlight_block, terminal.CTRL_R: syntax_highlight_all,
-        terminal.CTRL_L: center_cursor, terminal.ALT_SEMICOLON: comment_lines,
-        terminal.ALT_c: cycle_syntax_highlighting, (terminal.CTRL_X, terminal.CTRL_C): quit,
-        terminal.ESC: show_parts_list, terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
+        terminal.ALT_H: highlight_block, terminal.CTRL_L: center_cursor,
+        terminal.ALT_SEMICOLON: comment_lines, terminal.ALT_c: cycle_syntax_highlighting,
+        (terminal.CTRL_X, terminal.CTRL_C): quit, terminal.ESC: show_parts_list,
+        terminal.CTRL_K: delete_line, terminal.TAB: tab_align,
         (terminal.CTRL_Q, terminal.TAB): insert_tab, terminal.CTRL_UNDERSCORE: undo,
         terminal.CTRL_Z: undo, terminal.CTRL_G: abort_command, terminal.INSERT: toggle_overwrite,
         (terminal.CTRL_C, ">"): indent, (terminal.CTRL_C, "<"): dedent}
