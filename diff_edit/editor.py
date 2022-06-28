@@ -32,18 +32,26 @@ def highlight_str(line, bg_color, transparency=0.6):
     return termstr.TermStr(line).transform_style(blend_style)
 
 
-def highlight_line(line):
-    return highlight_str(line, termstr.Color.white, 0.8)
-
-
-NATIVE_STYLE = pygments.styles.get_style_by_name("paraiso-dark")
-
-
 @functools.lru_cache(maxsize=500)
 def parse_rgb(hex_rgb):
     if hex_rgb.startswith("#"):
         hex_rgb = hex_rgb[1:]
     return tuple(int("0x" + hex_rgb[index:index+2], base=16) for index in [0, 2, 4])
+
+
+@functools.cache
+def is_bright_theme(theme):
+    return sum(parse_rgb(theme.background_color)) > (255 * 3 / 2)
+
+
+def highlight_line(line, theme=None):
+    if theme is not None and is_bright_theme(theme):
+        return highlight_str(line, termstr.Color.black, 0.8)
+    else:
+        return highlight_str(line, termstr.Color.white, 0.8)
+
+
+NATIVE_STYLE = pygments.styles.get_style_by_name("paraiso-dark")
 
 
 @functools.lru_cache(maxsize=500)
@@ -319,7 +327,8 @@ class Parts:
             appearance, coords = wrap_text(parts, width - 1, pad_char)
             line_num = coords[self.cursor][0] // (width - 1)
             if self.is_focused:
-                appearance[line_num] = highlight_line(appearance[line_num])
+                appearance[line_num] = highlight_line(appearance[line_num],
+                                                      self.editor.text_widget.theme)
             view_widget = fill3.View.from_widget(fill3.Fixed(appearance))
             if line_num >= height:
                 x, y = view_widget.portal.position
@@ -329,7 +338,7 @@ class Parts:
         else:
             if self.is_focused:
                 line_num = coords[self.cursor][0] // width
-                result[line_num] = highlight_line(result[line_num])
+                result[line_num] = highlight_line(result[line_num], self.editor.text_widget.theme)
         fg_color = termstr.Color.grey_100
         bg_color = parse_rgb(self.editor.text_widget.theme.background_color)
         result.append(termstr.TermStr("─").bg_color(bg_color).fg_color(fg_color) * width)
@@ -440,7 +449,7 @@ class TextEditor:
             return appearance
         if self.mark is None:
             if 0 <= cursor_y < len(appearance):
-                appearance[cursor_y] = highlight_line(appearance[cursor_y])
+                appearance[cursor_y] = highlight_line(appearance[cursor_y], self.text_widget.theme)
         else:
             self._highlight_selection(appearance)
         if self.cursor_x >= len(appearance[0]):
